@@ -25,8 +25,17 @@ type SiteRow = {
   site_url: string;
   username: string | null;
   encrypted_totp_secret: EncryptedPayload | null;
-  passwords: { id: string; encrypted_password: EncryptedPayload; created_at: string; deleted: boolean }[];
+  passwords: {
+    id: string;
+    encrypted_password: EncryptedPayload;
+    created_at: string;
+    updated_at: string | null;
+    deleted: boolean;
+  }[];
 };
+
+const EXPIRY_REMINDER_DAYS = 365;
+const EXPIRY_DISMISS_KEY = "padlock-expiry-reminder-dismissed";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -39,6 +48,12 @@ export default function DashboardPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [oldPasswordCount, setOldPasswordCount] = useState(0);
+  const [expiryDismissed, setExpiryDismissed] = useState(false);
+
+  useEffect(() => {
+    setExpiryDismissed(window.sessionStorage.getItem(EXPIRY_DISMISS_KEY) === "1");
+  }, []);
 
   useEffect(() => {
     if (!key) {
@@ -64,7 +79,7 @@ export default function DashboardPage() {
     const { data, error: fetchError } = await supabase
       .from("sites")
       .select(
-        "id, site_name, site_url, username, encrypted_totp_secret, passwords(id, encrypted_password, created_at, deleted)"
+        "id, site_name, site_url, username, encrypted_totp_secret, passwords(id, encrypted_password, created_at, updated_at, deleted)"
       )
       .eq("user_id", user.id)
       .eq("deleted", false)
@@ -77,6 +92,18 @@ export default function DashboardPage() {
     }
 
     const rows = (data ?? []) as unknown as SiteRow[];
+    const now = Date.now();
+
+    const oldCount = rows.filter((row) => {
+      const activePassword = row.passwords
+        .filter((p) => !p.deleted)
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
+      if (!activePassword) return false;
+      const updatedAt = activePassword.updated_at ?? activePassword.created_at;
+      const ageDays = (now - new Date(updatedAt).getTime()) / (1000 * 60 * 60 * 24);
+      return ageDays >= EXPIRY_REMINDER_DAYS;
+    }).length;
+    setOldPasswordCount(oldCount);
 
     const decrypted = await Promise.all(
       rows.map(async (row) => {
@@ -149,6 +176,11 @@ export default function DashboardPage() {
     router.replace("/login");
   }
 
+  function dismissExpiryReminder() {
+    window.sessionStorage.setItem(EXPIRY_DISMISS_KEY, "1");
+    setExpiryDismissed(true);
+  }
+
   const searchTerm = search.trim().toLowerCase();
   const filteredEntries = searchTerm
     ? entries.filter(
@@ -189,6 +221,30 @@ export default function DashboardPage() {
         </div>
 
         {error && <Alert variant="error">{error}</Alert>}
+
+        {!loading && oldPasswordCount > 0 && !expiryDismissed && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-sm border-l-4 border-navy-700 bg-navy-700/5 px-4 py-3 text-sm">
+            <span className="text-foreground">
+              {oldPasswordCount} password{oldPasswordCount === 1 ? " hasn't" : "s haven't"} been
+              changed in over a year. Consider rotating{" "}
+              {oldPasswordCount === 1 ? "it" : "them"}.
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push("/dashboard/health")}
+                className="text-xs font-semibold text-navy-800 underline dark:text-gold-500"
+              >
+                Review
+              </button>
+              <button
+                onClick={dismissExpiryReminder}
+                className="text-xs font-semibold text-foreground-muted hover:text-foreground"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         {!loading && entries.length > 0 && (
           <input
