@@ -137,11 +137,48 @@ body {
   margin: 0;
 }
 
+.section-label {
+  margin: 14px 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.all-section {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.section-summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  list-style: none;
+}
+
+.section-summary::-webkit-details-marker {
+  display: none;
+}
+
+.section-summary::before {
+  content: "▸ ";
+}
+
+.all-section[open] > .section-summary::before {
+  content: "▾ ";
+}
+
 .entry-list {
   list-style: none;
-  margin: 0;
+  margin: 6px 0 0;
   padding: 0;
-  max-height: 320px;
+  max-height: 260px;
   overflow-y: auto;
 }
 

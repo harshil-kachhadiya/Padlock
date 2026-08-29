@@ -28,6 +28,31 @@ function hostnameOf(url) {
   }
 }
 
+// Second-level suffixes where the registrable domain needs 3 labels, not 2
+// (e.g. "example.co.uk", not just "co.uk"). Small pragmatic list, not a full PSL.
+const TWO_LABEL_SUFFIXES = new Set([
+  "co.uk", "org.uk", "ac.uk", "gov.uk",
+  "co.in", "com.au", "co.nz", "co.za",
+  "com.br", "com.cn", "co.jp", "co.kr",
+]);
+
+function registrableDomain(host) {
+  if (!host) return "";
+  const parts = host.split(".");
+  if (parts.length <= 2) return host;
+
+  const lastTwo = parts.slice(-2).join(".");
+  if (TWO_LABEL_SUFFIXES.has(lastTwo) && parts.length > 2) {
+    return parts.slice(-3).join(".");
+  }
+  return lastTwo;
+}
+
+function hostsMatch(a, b) {
+  if (!a || !b) return false;
+  return registrableDomain(a) === registrableDomain(b);
+}
+
 async function boot() {
   const session = await getSession();
 
@@ -100,6 +125,62 @@ async function handleUnlock(session, userRow) {
   }
 }
 
+function buildEntryNode(site, activePassword, session, key, onChanged) {
+  const entryTemplate = document.getElementById("tpl-entry");
+  const node = entryTemplate.content.cloneNode(true);
+  node.querySelector(".entry-name").textContent = site.site_name;
+  node.querySelector(".entry-username").textContent = site.username || "";
+
+  node.querySelector('[data-action="autofill"]').addEventListener("click", async (e) => {
+    const button = e.currentTarget;
+    button.disabled = true;
+    button.textContent = "Filling…";
+
+    try {
+      const plaintext = await decryptEntry(key, activePassword.encrypted_password);
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        type: "PADLOCK_AUTOFILL",
+        username: site.username,
+        password: plaintext,
+      });
+
+      button.textContent = response?.ok ? "Filled" : "No form found";
+    } catch {
+      button.textContent = "Failed";
+    } finally {
+      setTimeout(() => {
+        button.textContent = "Autofill";
+        button.disabled = false;
+      }, 1500);
+    }
+  });
+
+  node.querySelector('[data-action="edit"]').addEventListener("click", () => {
+    showEntryForm(session, key, { site, activePassword });
+  });
+
+  node.querySelector('[data-action="delete"]').addEventListener("click", async (e) => {
+    if (!confirm(`Delete "${site.site_name}"? This cannot be undone from the extension.`)) return;
+
+    const button = e.currentTarget;
+    button.disabled = true;
+    button.textContent = "Deleting…";
+
+    try {
+      await softDeleteSite(session.access_token, site.id);
+      await onChanged();
+    } catch (err) {
+      alert(err.message);
+      button.disabled = false;
+      button.textContent = "Delete";
+    }
+  });
+
+  return node;
+}
+
 async function showVault(session, key) {
   render("tpl-vault");
   on("lock", async () => {
@@ -109,85 +190,67 @@ async function showVault(session, key) {
   on("sign-out", handleSignOut);
   on("add-entry", () => showEntryForm(session, key, null));
 
-  const list = app.querySelector("#entry-list");
-  const emptyMsg = app.querySelector("#vault-empty");
+  const matchList = app.querySelector("#entry-list-match");
+  const allList = app.querySelector("#entry-list-all");
+  const matchEmpty = app.querySelector("#match-empty");
+  const matchLabel = app.querySelector("#match-label");
+  const allSection = app.querySelector("#all-section");
+
   const activeUrl = await getActiveTabUrl();
   const activeHost = hostnameOf(activeUrl);
 
-  const sites = await fetchSitesWithPasswords(session.access_token, session.user.id);
+  const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
 
-  if (sites.length === 0) {
-    emptyMsg.hidden = false;
+  const entries = allSites
+    .map((site) => {
+      const activePassword = (site.passwords || [])
+        .filter((p) => !p.deleted)
+        .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
+      return activePassword ? { site, activePassword } : null;
+    })
+    .filter(Boolean);
+
+  const refresh = () => showVault(session, key);
+
+  if (entries.length === 0) {
+    matchLabel.hidden = true;
+    matchEmpty.hidden = false;
+    matchEmpty.textContent = "No entries yet. Add one above.";
+    allSection.hidden = true;
     return;
   }
 
-  const entryTemplate = document.getElementById("tpl-entry");
+  if (!activeHost) {
+    matchLabel.hidden = true;
+    matchEmpty.hidden = true;
+    allSection.open = true;
+    allSection.querySelector(".section-summary").textContent = "All items";
+    for (const { site, activePassword } of entries) {
+      allList.appendChild(buildEntryNode(site, activePassword, session, key, refresh));
+    }
+    return;
+  }
 
-  const sorted = [...sites].sort((a, b) => {
-    const aMatch = hostnameOf(`https://${a.site_url}`).includes(activeHost) ? 0 : 1;
-    const bMatch = hostnameOf(`https://${b.site_url}`).includes(activeHost) ? 0 : 1;
-    return aMatch - bMatch;
-  });
+  const matching = entries.filter(({ site }) =>
+    hostsMatch(activeHost, hostnameOf(`https://${site.site_url}`))
+  );
+  const rest = entries.filter((entry) => !matching.includes(entry));
 
-  for (const site of sorted) {
-    const activePassword = (site.passwords || [])
-      .filter((p) => !p.deleted)
-      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
+  matchLabel.textContent = `This site (${activeHost})`;
 
-    if (!activePassword) continue;
+  if (matching.length === 0) {
+    matchEmpty.hidden = false;
+  } else {
+    for (const { site, activePassword } of matching) {
+      matchList.appendChild(buildEntryNode(site, activePassword, session, key, refresh));
+    }
+  }
 
-    const node = entryTemplate.content.cloneNode(true);
-    node.querySelector(".entry-name").textContent = site.site_name;
-    node.querySelector(".entry-username").textContent = site.username || "";
+  allSection.querySelector(".section-summary").textContent = `All items (${entries.length})`;
+  allSection.open = matching.length === 0;
 
-    node.querySelector('[data-action="autofill"]').addEventListener("click", async (e) => {
-      const button = e.currentTarget;
-      button.disabled = true;
-      button.textContent = "Filling…";
-
-      try {
-        const plaintext = await decryptEntry(key, activePassword.encrypted_password);
-        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-        const response = await chrome.tabs.sendMessage(tab.id, {
-          type: "PADLOCK_AUTOFILL",
-          username: site.username,
-          password: plaintext,
-        });
-
-        button.textContent = response?.ok ? "Filled" : "No form found";
-      } catch {
-        button.textContent = "Failed";
-      } finally {
-        setTimeout(() => {
-          button.textContent = "Autofill";
-          button.disabled = false;
-        }, 1500);
-      }
-    });
-
-    node.querySelector('[data-action="edit"]').addEventListener("click", () => {
-      showEntryForm(session, key, { site, activePassword });
-    });
-
-    node.querySelector('[data-action="delete"]').addEventListener("click", async (e) => {
-      if (!confirm(`Delete "${site.site_name}"? This cannot be undone from the extension.`)) return;
-
-      const button = e.currentTarget;
-      button.disabled = true;
-      button.textContent = "Deleting…";
-
-      try {
-        await softDeleteSite(session.access_token, site.id);
-        await showVault(session, key);
-      } catch (err) {
-        alert(err.message);
-        button.disabled = false;
-        button.textContent = "Delete";
-      }
-    });
-
-    list.appendChild(node);
+  for (const { site, activePassword } of rest) {
+    allList.appendChild(buildEntryNode(site, activePassword, session, key, refresh));
   }
 }
 

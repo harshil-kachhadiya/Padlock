@@ -56,8 +56,15 @@
           </div>
         </div>
         <button class="btn btn-secondary" data-action="add-entry">+ Add entry</button>
-        <p class="muted" id="vault-empty" hidden>No entries yet. Add one above.</p>
-        <ul class="entry-list" id="entry-list"></ul>
+
+        <p class="section-label" id="match-label">This site</p>
+        <p class="muted" id="match-empty" hidden>No saved entries for this site.</p>
+        <ul class="entry-list" id="entry-list-match"></ul>
+
+        <details class="all-section" id="all-section">
+          <summary class="section-summary">All items</summary>
+          <ul class="entry-list" id="entry-list-all"></ul>
+        </details>
       </div>
     </template>
 
