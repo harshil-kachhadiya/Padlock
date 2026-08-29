@@ -35,11 +35,23 @@ export async function PATCH(
   }
 
   const { supabase, user } = authed;
-  const { siteName, siteUrl, username, encryptedPassword } = await request.json();
+  const body = await request.json();
+  const { siteName, siteUrl, username, encryptedPassword } = body;
+
+  const siteUpdate: Record<string, unknown> = {
+    site_name: siteName,
+    site_url: siteUrl,
+    username: username || null,
+  };
+  // Only touch the TOTP secret when the client explicitly sent the field —
+  // `null` clears it, an object updates it, and omitting it leaves it as-is.
+  if ("encryptedTotpSecret" in body) {
+    siteUpdate.encrypted_totp_secret = body.encryptedTotpSecret;
+  }
 
   const { error: siteUpdateError } = await supabase
     .from("sites")
-    .update({ site_name: siteName, site_url: siteUrl, username: username || null })
+    .update(siteUpdate)
     .eq("id", siteId)
     .eq("user_id", user.id);
 

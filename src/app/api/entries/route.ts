@@ -17,7 +17,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing authorization header" }, { status: 401 });
   }
 
-  const { siteName, siteUrl, username, encryptedPassword } = await request.json();
+  const { siteName, siteUrl, username, encryptedPassword, encryptedTotpSecret } =
+    await request.json();
 
   if (!siteName || !siteUrl || !encryptedPassword) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
       site_name: siteName,
       site_url: siteUrl,
       username: username || null,
+      encrypted_totp_secret: encryptedTotpSecret || null,
     })
     .select("id")
     .single();

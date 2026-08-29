@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { decryptEntry, type EncryptedPayload } from "@/lib/crypto";
 import { useKey } from "@/lib/keyContext";
 import { useSettings } from "@/lib/settingsContext";
-import { Alert, Button, Card, SiteHeader, PageContainer } from "@/components/ui";
+import { Alert, Button, Card, SiteHeader, PageContainer, TotpCode } from "@/components/ui";
 
 type Entry = {
   siteId: string;
@@ -15,6 +15,7 @@ type Entry = {
   username: string | null;
   passwordId: string;
   decryptedPassword: string;
+  totpSecret: string | null;
   revealed: boolean;
 };
 
@@ -23,6 +24,7 @@ type SiteRow = {
   site_name: string;
   site_url: string;
   username: string | null;
+  encrypted_totp_secret: EncryptedPayload | null;
   passwords: { id: string; encrypted_password: EncryptedPayload; created_at: string; deleted: boolean }[];
 };
 
@@ -60,7 +62,9 @@ export default function DashboardPage() {
 
     const { data, error: fetchError } = await supabase
       .from("sites")
-      .select("id, site_name, site_url, username, passwords(id, encrypted_password, created_at, deleted)")
+      .select(
+        "id, site_name, site_url, username, encrypted_totp_secret, passwords(id, encrypted_password, created_at, deleted)"
+      )
       .eq("user_id", user.id)
       .eq("deleted", false)
       .order("created_at", { ascending: false });
@@ -82,6 +86,9 @@ export default function DashboardPage() {
         if (!activePassword) return null;
 
         const plaintext = await decryptEntry(key!, activePassword.encrypted_password);
+        const totpSecret = row.encrypted_totp_secret
+          ? await decryptEntry(key!, row.encrypted_totp_secret)
+          : null;
 
         return {
           siteId: row.id,
@@ -90,6 +97,7 @@ export default function DashboardPage() {
           username: row.username,
           passwordId: activePassword.id,
           decryptedPassword: plaintext,
+          totpSecret,
           revealed: settings.reveal_password_default,
         } satisfies Entry;
       })
@@ -185,6 +193,7 @@ export default function DashboardPage() {
                     <th className="px-4 py-3 font-semibold">Site</th>
                     <th className="px-4 py-3 font-semibold">Username</th>
                     <th className="px-4 py-3 font-semibold">Password</th>
+                    <th className="px-4 py-3 font-semibold">2FA</th>
                     <th className="px-4 py-3 font-semibold">Actions</th>
                   </tr>
                 </thead>
@@ -208,6 +217,13 @@ export default function DashboardPage() {
                             {entry.revealed ? "Hide" : "Show"}
                           </button>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 align-top">
+                        {entry.totpSecret ? (
+                          <TotpCode secret={entry.totpSecret} />
+                        ) : (
+                          <span className="text-xs text-foreground-muted">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 align-top">
                         <div className="flex gap-2">

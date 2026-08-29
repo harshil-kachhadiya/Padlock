@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { decryptEntry, encryptEntry, type EncryptedPayload } from "@/lib/crypto";
+import { isValidBase32Secret } from "@/lib/totp";
 import { useKey } from "@/lib/keyContext";
 import {
   Alert,
@@ -28,6 +29,8 @@ export default function EditEntryPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [originalPassword, setOriginalPassword] = useState("");
+  const [totpSecret, setTotpSecret] = useState("");
+  const [originalTotpSecret, setOriginalTotpSecret] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,7 +51,9 @@ export default function EditEntryPage() {
 
       const { data: site, error: siteError } = await supabase
         .from("sites")
-        .select("site_name, site_url, username, passwords(id, encrypted_password, created_at, deleted)")
+        .select(
+          "site_name, site_url, username, encrypted_totp_secret, passwords(id, encrypted_password, created_at, deleted)"
+        )
         .eq("id", siteId)
         .eq("user_id", user.id)
         .eq("deleted", false)
@@ -63,6 +68,15 @@ export default function EditEntryPage() {
       setSiteName(site.site_name);
       setSiteUrl(site.site_url);
       setUsername(site.username ?? "");
+
+      if (site.encrypted_totp_secret) {
+        const secret = await decryptEntry(
+          key!,
+          site.encrypted_totp_secret as EncryptedPayload
+        );
+        setTotpSecret(secret);
+        setOriginalTotpSecret(secret);
+      }
 
       const activePassword = (
         site.passwords as { id: string; encrypted_password: EncryptedPayload; created_at: string; deleted: boolean }[]
@@ -96,6 +110,11 @@ export default function EditEntryPage() {
       return;
     }
 
+    if (totpSecret && !isValidBase32Secret(totpSecret)) {
+      setError("That doesn't look like a valid TOTP secret (base32, e.g. from a QR code's setup key).");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -110,13 +129,22 @@ export default function EditEntryPage() {
       const passwordChanged = password !== originalPassword;
       const encryptedPassword = passwordChanged ? await encryptEntry(key, password) : undefined;
 
+      const totpChanged = totpSecret !== originalTotpSecret;
+      const body: Record<string, unknown> = { siteName, siteUrl, username, encryptedPassword };
+
+      if (totpChanged) {
+        body.encryptedTotpSecret = totpSecret
+          ? await encryptEntry(key, totpSecret.replace(/\s+/g, ""))
+          : null;
+      }
+
       const response = await fetch(`/api/entries/${siteId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ siteName, siteUrl, username, encryptedPassword }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -178,6 +206,15 @@ export default function EditEntryPage() {
                 label="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+              />
+
+              <Input
+                label="TOTP secret (optional)"
+                type="text"
+                value={totpSecret}
+                onChange={(e) => setTotpSecret(e.target.value)}
+                placeholder="e.g. JBSWY3DPEHPK3PXP"
+                hint="Clear this field to remove 2FA code generation for this entry."
               />
 
               {error && <Alert variant="error">{error}</Alert>}

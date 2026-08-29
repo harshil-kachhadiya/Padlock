@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { encryptEntry } from "@/lib/crypto";
+import { isValidBase32Secret } from "@/lib/totp";
 import { useKey } from "@/lib/keyContext";
 import {
   Alert,
@@ -24,6 +25,7 @@ export default function AddEntryPage() {
   const [siteUrl, setSiteUrl] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [totpSecret, setTotpSecret] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -47,6 +49,11 @@ export default function AddEntryPage() {
       return;
     }
 
+    if (totpSecret && !isValidBase32Secret(totpSecret)) {
+      setError("That doesn't look like a valid TOTP secret (base32, e.g. from a QR code's setup key).");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -59,6 +66,9 @@ export default function AddEntryPage() {
       }
 
       const encryptedPassword = await encryptEntry(key, password);
+      const encryptedTotpSecret = totpSecret
+        ? await encryptEntry(key, totpSecret.replace(/\s+/g, ""))
+        : null;
 
       const response = await fetch("/api/entries", {
         method: "POST",
@@ -66,7 +76,13 @@ export default function AddEntryPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ siteName, siteUrl, username, encryptedPassword }),
+        body: JSON.stringify({
+          siteName,
+          siteUrl,
+          username,
+          encryptedPassword,
+          encryptedTotpSecret,
+        }),
       });
 
       if (!response.ok) {
@@ -122,6 +138,15 @@ export default function AddEntryPage() {
                 label="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+              />
+
+              <Input
+                label="TOTP secret (optional)"
+                type="text"
+                value={totpSecret}
+                onChange={(e) => setTotpSecret(e.target.value)}
+                placeholder="e.g. JBSWY3DPEHPK3PXP"
+                hint="The base32 setup key from the site's 2FA QR code — Padlock will generate live codes."
               />
 
               {error && <Alert variant="error">{error}</Alert>}

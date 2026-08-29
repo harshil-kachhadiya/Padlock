@@ -6,3 +6,4 @@ export { Alert } from "./Alert";
 export { SiteHeader } from "./SiteHeader";
 export { ThemeToggle } from "./ThemeToggle";
 export { PageContainer } from "./PageContainer";
+export { TotpCode } from "./TotpCode";
