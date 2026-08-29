@@ -77,9 +77,20 @@ async function boot() {
     render("tpl-unlock");
     on("sign-out", handleSignOut);
     on("unlock", () => handleUnlock(session, userRow));
-    app.querySelector("#unlock-password").addEventListener("keydown", (e) => {
+
+    const passwordInput = app.querySelector("#unlock-password");
+    const capsLockWarning = app.querySelector("#unlock-capslock");
+
+    function updateCapsLockWarning(e) {
+      capsLockWarning.hidden = !e.getModifierState?.("CapsLock");
+    }
+
+    passwordInput.addEventListener("keydown", (e) => {
+      updateCapsLockWarning(e);
       if (e.key === "Enter") handleUnlock(session, userRow);
     });
+    passwordInput.addEventListener("keyup", updateCapsLockWarning);
+
     return;
   }
 

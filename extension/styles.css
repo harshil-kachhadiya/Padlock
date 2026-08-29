@@ -87,6 +87,13 @@ body {
   margin-top: 8px;
 }
 
+.warning {
+  color: #b7791f;
+  font-size: 11px;
+  font-weight: 600;
+  margin: 6px 0 0;
+}
+
 .password-row {
   display: flex;
   align-items: center;
