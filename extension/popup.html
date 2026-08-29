@@ -90,13 +90,14 @@
       <li class="entry">
         <div class="entry-info">
           <div class="entry-name"></div>
-          <div class="entry-username"></div>
+          <div class="entry-username" data-action="copy-username" title="Click to copy username"></div>
           <div class="entry-match-reason" hidden></div>
         </div>
         <div class="entry-actions">
           <button class="btn btn-primary btn-sm" data-action="autofill">Autofill</button>
-          <button class="btn btn-ghost btn-sm" data-action="edit">Edit</button>
-          <button class="btn btn-ghost btn-sm entry-delete" data-action="delete">Delete</button>
+          <button class="icon-btn icon-btn-sm" data-action="copy-password" title="Copy password" aria-label="Copy password">📋</button>
+          <button class="icon-btn icon-btn-sm" data-action="edit" title="Edit entry" aria-label="Edit entry">✎</button>
+          <button class="icon-btn icon-btn-sm entry-delete" data-action="delete" title="Delete entry" aria-label="Delete entry">🗑</button>
         </div>
         <div class="entry-confirm" hidden>
           <span class="entry-confirm-label">Delete this entry?</span>

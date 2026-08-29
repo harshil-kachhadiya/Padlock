@@ -125,6 +125,12 @@ body {
   border-color: var(--navy-900);
 }
 
+.icon-btn-sm {
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+}
+
 .strength-meter {
   display: flex;
   align-items: center;
@@ -321,6 +327,12 @@ body {
 .entry-username {
   font-size: 11px;
   color: var(--text-muted);
+  cursor: pointer;
+}
+
+.entry-username:hover {
+  text-decoration: underline;
+  color: var(--navy-800);
 }
 
 .entry-match-reason {

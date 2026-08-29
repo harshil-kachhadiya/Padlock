@@ -123,6 +123,138 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 });
 
+// --- Save-prompt on form submit ------------------------------------------
+// Content script captures a submitted login form; we stash it per-tab (memory
+// only) so the NEXT page load on that same tab (post-redirect) can pick it up
+// and decide whether to show a "Save this password?" banner.
+
+const IGNORED_HOSTS_KEY = "padlock_ignored_hosts"; // chrome.storage.local: string[]
+const PENDING_CAPTURE_PREFIX = "padlock_pending_capture_"; // + tabId, chrome.storage.session
+const PENDING_CAPTURE_TTL_MS = 20_000;
+
+async function getIgnoredHosts() {
+  const stored = await chrome.storage.local.get(IGNORED_HOSTS_KEY);
+  return stored[IGNORED_HOSTS_KEY] || [];
+}
+
+async function addIgnoredHost(host) {
+  const hosts = await getIgnoredHosts();
+  if (!hosts.includes(host)) {
+    await chrome.storage.local.set({ [IGNORED_HOSTS_KEY]: [...hosts, host] });
+  }
+}
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "PADLOCK_CAPTURE_SUBMIT") {
+    const tabId = sender.tab?.id;
+    if (tabId == null) return;
+
+    chrome.storage.session.set({
+      [`${PENDING_CAPTURE_PREFIX}${tabId}`]: {
+        username: message.username,
+        password: message.password,
+        host: message.host,
+        capturedAt: Date.now(),
+      },
+    });
+    return;
+  }
+
+  if (message?.type === "PADLOCK_GET_PENDING_CAPTURE") {
+    (async () => {
+      const tabId = sender.tab?.id;
+      if (tabId == null) return sendResponse(null);
+
+      const storageKey = `${PENDING_CAPTURE_PREFIX}${tabId}`;
+      const stored = await chrome.storage.session.get(storageKey);
+      const capture = stored[storageKey];
+      await chrome.storage.session.remove(storageKey);
+
+      if (!capture) return sendResponse(null);
+      if (Date.now() - capture.capturedAt > PENDING_CAPTURE_TTL_MS) return sendResponse(null);
+      if (!hostsMatch(capture.host, message.currentHost)) return sendResponse(null);
+
+      const ignored = await getIgnoredHosts();
+      if (ignored.some((h) => hostsMatch(h, capture.host))) return sendResponse(null);
+
+      sendResponse(capture);
+    })();
+    return true;
+  }
+
+  if (message?.type === "PADLOCK_CHECK_SHOULD_PROMPT") {
+    (async () => {
+      try {
+        const session = await getSession();
+        const vaultKey = await loadVaultKey();
+        if (!session || !vaultKey) return sendResponse({ show: false });
+
+        const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
+        const candidates = activeEntriesForHost(allSites, message.host).filter(
+          ({ site }) => (site.username || "") === (message.username || "")
+        );
+
+        for (const { activePassword } of candidates) {
+          const existingPlain = await decryptEntry(vaultKey, activePassword.encrypted_password);
+          if (existingPlain === message.password) return sendResponse({ show: false });
+        }
+
+        sendResponse({ show: true, isUpdate: candidates.length > 0 });
+      } catch {
+        sendResponse({ show: false });
+      }
+    })();
+    return true;
+  }
+
+  if (message?.type === "PADLOCK_SAVE_CAPTURE") {
+    (async () => {
+      try {
+        const session = await getSession();
+        const vaultKey = await loadVaultKey();
+        if (!session || !vaultKey) {
+          return sendResponse({ ok: false, error: "Vault is locked." });
+        }
+
+        const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
+        const existing = activeEntriesForHost(allSites, message.host).find(
+          ({ site }) => (site.username || "") === (message.username || "")
+        );
+
+        const encryptedPassword = await encryptEntry(vaultKey, message.password);
+
+        if (existing) {
+          await updatePassword(session.access_token, existing.activePassword.id, encryptedPassword);
+        } else {
+          const siteName =
+            message.host.split(".").slice(0, -1).join(".").replace(/^\w/, (c) => c.toUpperCase()) ||
+            message.host;
+
+          const newSite = await createSite(session.access_token, session.user.id, {
+            siteName,
+            siteUrl: message.host,
+            username: message.username,
+          });
+          await createPassword(session.access_token, session.user.id, newSite.id, encryptedPassword);
+        }
+
+        sendResponse({ ok: true });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
+    return true;
+  }
+
+  if (message?.type === "PADLOCK_IGNORE_HOST") {
+    (async () => {
+      await addIgnoredHost(message.host);
+      sendResponse({ ok: true });
+    })();
+    return true;
+  }
+});
+
 chrome.tabs.onActivated.addListener(rebuildMenuForActiveTab);
 chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete" && tab.active) rebuildMenuForTab(tab);

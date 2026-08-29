@@ -16,6 +16,54 @@ function renderLoading(message = "Loading…") {
   if (msgEl) msgEl.textContent = message;
 }
 
+// Extension popups close the instant they lose focus, killing any pending
+// setTimeout — so auto-clear needs a "check on next open" fallback too (same
+// pattern as the vault's auto-lock), not just a live timer for while it's open.
+const CLIPBOARD_CLEAR_MS = 20_000;
+const CLIPBOARD_STORAGE_KEY = "padlock_clipboard_copy";
+let clipboardGeneration = 0;
+
+async function checkStaleClipboard() {
+  const stored = await chrome.storage.session.get(CLIPBOARD_STORAGE_KEY);
+  const entry = stored[CLIPBOARD_STORAGE_KEY];
+  if (!entry) return;
+
+  if (Date.now() - entry.copiedAt >= CLIPBOARD_CLEAR_MS) {
+    try {
+      await navigator.clipboard.writeText("");
+    } catch {
+      /* clipboard unavailable without focus — nothing more we can do here */
+    }
+    await chrome.storage.session.remove(CLIPBOARD_STORAGE_KEY);
+  }
+}
+
+async function copyToClipboard(text, { autoClear = false, label = "Copied" } = {}) {
+  await navigator.clipboard.writeText(text);
+
+  if (!autoClear) {
+    showToast(label, "success");
+    return;
+  }
+
+  const myGeneration = ++clipboardGeneration;
+  await chrome.storage.session.set({
+    [CLIPBOARD_STORAGE_KEY]: { text, copiedAt: Date.now() },
+  });
+
+  showToast(`${label} — clipboard clears in 20s`, "success");
+
+  setTimeout(async () => {
+    if (clipboardGeneration !== myGeneration) return; // a newer copy took over
+    try {
+      await navigator.clipboard.writeText("");
+    } catch {
+      /* popup likely closed — the next-open check above will catch it */
+    }
+    await chrome.storage.session.remove(CLIPBOARD_STORAGE_KEY);
+  }, CLIPBOARD_CLEAR_MS);
+}
+
 let toastTimeout;
 let toastHideTimeout;
 
@@ -71,6 +119,7 @@ async function getActiveTabUrl() {
 }
 
 async function boot() {
+  checkStaleClipboard();
   renderLoading("Checking session…");
   const session = await getSession();
 
@@ -173,6 +222,22 @@ function buildEntryNode(site, activePassword, session, key, onChanged, matchReas
     matchReasonEl.textContent = matchReason;
     matchReasonEl.hidden = false;
   }
+
+  node.querySelector('[data-action="copy-username"]').addEventListener("click", () => {
+    if (!site.username) return;
+    copyToClipboard(site.username, { label: "Username copied" });
+  });
+
+  node.querySelector('[data-action="copy-password"]').addEventListener("click", async (e) => {
+    const button = e.currentTarget;
+    try {
+      const plaintext = await decryptEntry(key, activePassword.encrypted_password);
+      await copyToClipboard(plaintext, { autoClear: true, label: "Password copied" });
+    } catch {
+      showToast("Copy failed", "error");
+    }
+    button.blur();
+  });
 
   node.querySelector('[data-action="autofill"]').addEventListener("click", async (e) => {
     const button = e.currentTarget;
