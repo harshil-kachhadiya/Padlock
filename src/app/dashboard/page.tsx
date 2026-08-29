@@ -16,6 +16,7 @@ type Entry = {
   passwordId: string;
   decryptedPassword: string;
   totpSecret: string | null;
+  tags: string[];
   revealed: boolean;
 };
 
@@ -25,6 +26,7 @@ type SiteRow = {
   site_url: string;
   username: string | null;
   encrypted_totp_secret: EncryptedPayload | null;
+  tags: string[] | null;
   passwords: { id: string; encrypted_password: EncryptedPayload; created_at: string; deleted: boolean }[];
 };
 
@@ -37,6 +39,8 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
@@ -63,7 +67,7 @@ export default function DashboardPage() {
     const { data, error: fetchError } = await supabase
       .from("sites")
       .select(
-        "id, site_name, site_url, username, encrypted_totp_secret, passwords(id, encrypted_password, created_at, deleted)"
+        "id, site_name, site_url, username, encrypted_totp_secret, tags, passwords(id, encrypted_password, created_at, deleted)"
       )
       .eq("user_id", user.id)
       .eq("deleted", false)
@@ -98,6 +102,7 @@ export default function DashboardPage() {
           passwordId: activePassword.id,
           decryptedPassword: plaintext,
           totpSecret,
+          tags: row.tags ?? [],
           revealed: settings.reveal_password_default,
         } satisfies Entry;
       })
@@ -148,6 +153,21 @@ export default function DashboardPage() {
     router.replace("/login");
   }
 
+  const allTags = [...new Set(entries.flatMap((e) => e.tags))].sort();
+
+  const searchTerm = search.trim().toLowerCase();
+  const filteredEntries = entries.filter((e) => {
+    const matchesSearch =
+      !searchTerm ||
+      e.siteName.toLowerCase().includes(searchTerm) ||
+      e.siteUrl.toLowerCase().includes(searchTerm) ||
+      (e.username ?? "").toLowerCase().includes(searchTerm);
+
+    const matchesTag = !activeTag || e.tags.includes(activeTag);
+
+    return matchesSearch && matchesTag;
+  });
+
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader userEmail={userEmail} onSignOut={handleSignOut} />
@@ -176,12 +196,48 @@ export default function DashboardPage() {
 
         {error && <Alert variant="error">{error}</Alert>}
 
+        {!loading && entries.length > 0 && (
+          <>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by site, URL, or username&hellip;"
+              className="mb-3 w-full max-w-sm rounded-sm border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none placeholder:text-foreground-muted focus:border-navy-700 focus:ring-2 focus:ring-navy-700/30"
+            />
+            {allTags.length > 0 && (
+              <div className="mb-4 flex flex-wrap gap-2">
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setActiveTag((t) => (t === tag ? null : tag))}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                      activeTag === tag
+                        ? "border-navy-800 bg-navy-800 text-white"
+                        : "border-border bg-surface text-foreground-muted hover:border-navy-700"
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
         {loading ? (
           <p className="text-sm text-foreground-muted">Loading vault&hellip;</p>
         ) : entries.length === 0 ? (
           <Card>
             <div className="px-6 py-10 text-center text-sm text-foreground-muted">
               No entries yet. Click &ldquo;Add entry&rdquo; to save your first credential.
+            </div>
+          </Card>
+        ) : filteredEntries.length === 0 ? (
+          <Card>
+            <div className="px-6 py-10 text-center text-sm text-foreground-muted">
+              No entries match{search ? ` "${search}"` : ""}
+              {activeTag ? ` with tag "${activeTag}"` : ""}.
             </div>
           </Card>
         ) : (
@@ -198,11 +254,23 @@ export default function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map((entry) => (
+                  {filteredEntries.map((entry) => (
                     <tr key={entry.siteId} className="border-b border-border last:border-0">
                       <td className="px-4 py-3 align-top">
                         <div className="font-semibold text-foreground">{entry.siteName}</div>
                         <div className="text-xs text-foreground-muted">{entry.siteUrl}</div>
+                        {entry.tags.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {entry.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-semibold text-foreground-muted"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 align-top text-foreground">{entry.username}</td>
                       <td className="px-4 py-3 align-top">

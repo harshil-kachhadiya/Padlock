@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { decryptEntry, encryptEntry, type EncryptedPayload } from "@/lib/crypto";
 import { isValidBase32Secret } from "@/lib/totp";
+import { parseTagsInput, formatTags } from "@/lib/tags";
 import { useKey } from "@/lib/keyContext";
 import {
   Alert,
@@ -31,6 +32,7 @@ export default function EditEntryPage() {
   const [originalPassword, setOriginalPassword] = useState("");
   const [totpSecret, setTotpSecret] = useState("");
   const [originalTotpSecret, setOriginalTotpSecret] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,7 +54,7 @@ export default function EditEntryPage() {
       const { data: site, error: siteError } = await supabase
         .from("sites")
         .select(
-          "site_name, site_url, username, encrypted_totp_secret, passwords(id, encrypted_password, created_at, deleted)"
+          "site_name, site_url, username, encrypted_totp_secret, tags, passwords(id, encrypted_password, created_at, deleted)"
         )
         .eq("id", siteId)
         .eq("user_id", user.id)
@@ -68,6 +70,7 @@ export default function EditEntryPage() {
       setSiteName(site.site_name);
       setSiteUrl(site.site_url);
       setUsername(site.username ?? "");
+      setTagsInput(formatTags((site.tags as string[] | null) ?? []));
 
       if (site.encrypted_totp_secret) {
         const secret = await decryptEntry(
@@ -130,7 +133,13 @@ export default function EditEntryPage() {
       const encryptedPassword = passwordChanged ? await encryptEntry(key, password) : undefined;
 
       const totpChanged = totpSecret !== originalTotpSecret;
-      const body: Record<string, unknown> = { siteName, siteUrl, username, encryptedPassword };
+      const body: Record<string, unknown> = {
+        siteName,
+        siteUrl,
+        username,
+        encryptedPassword,
+        tags: parseTagsInput(tagsInput),
+      };
 
       if (totpChanged) {
         body.encryptedTotpSecret = totpSecret
@@ -215,6 +224,15 @@ export default function EditEntryPage() {
                 onChange={(e) => setTotpSecret(e.target.value)}
                 placeholder="e.g. JBSWY3DPEHPK3PXP"
                 hint="Clear this field to remove 2FA code generation for this entry."
+              />
+
+              <Input
+                label="Tags (optional)"
+                type="text"
+                value={tagsInput}
+                onChange={(e) => setTagsInput(e.target.value)}
+                placeholder="work, banking"
+                hint="Comma-separated. Used for filtering your vault."
               />
 
               {error && <Alert variant="error">{error}</Alert>}
