@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { isRateLimited, clientIpFrom } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
+  const ip = clientIpFrom(request.headers);
+  if (isRateLimited(`extension-feedback:${ip}`, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: "Too many requests. Try again later." }, { status: 429 });
+  }
+
   const { reason, message } = await request.json();
 
   if (reason && typeof reason !== "string") {

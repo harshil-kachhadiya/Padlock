@@ -122,3 +122,19 @@ async function undoDeleteSite(accessToken, siteId) {
 
   if (!passwordRes.ok) throw new Error("Failed to restore password.");
 }
+
+async function fetchUserSetting(accessToken, userId, key, defaultValue) {
+  try {
+    const url =
+      `${PADLOCK_CONFIG.SUPABASE_URL}/rest/v1/user_settings` +
+      `?user_id=eq.${userId}&setting_key=eq.${key}&select=value`;
+
+    const res = await fetch(url, { headers: restHeaders(accessToken) });
+    if (!res.ok) return defaultValue;
+
+    const rows = await res.json();
+    return rows.length > 0 ? rows[0].value : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+}

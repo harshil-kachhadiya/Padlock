@@ -72,6 +72,12 @@ export default function SettingsPage() {
     router.replace("/login");
   }
 
+  async function handleSignOutEverywhere() {
+    await supabase.auth.signOut({ scope: "global" });
+    clearKey();
+    router.replace("/login");
+  }
+
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -393,6 +399,23 @@ export default function SettingsPage() {
                 </span>
               </span>
             </label>
+          </CardBody>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-foreground-muted">
+              Session
+            </h2>
+          </CardHeader>
+          <CardBody>
+            <p className="mb-4 text-xs leading-relaxed text-foreground-muted">
+              Signed in somewhere you don&apos;t recognize? This signs out every device and
+              browser using your account, not just this one.
+            </p>
+            <Button variant="danger" onClick={handleSignOutEverywhere}>
+              Sign out of all devices
+            </Button>
           </CardBody>
         </Card>
 

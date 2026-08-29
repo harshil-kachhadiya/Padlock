@@ -45,5 +45,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: userRowError.message }, { status: 400 });
   }
 
+  // Removing the Supabase Auth identity itself requires the service-role key
+  // (never exposed to the client — read from a server-only env var). If it
+  // isn't configured, the app data above is still fully deleted; only the
+  // auth record would remain, and re-signing-in would create a fresh vault.
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (serviceRoleKey) {
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { error: adminDeleteError } = await adminClient.auth.admin.deleteUser(user.id);
+    if (adminDeleteError) {
+      return NextResponse.json(
+        {
+          ok: true,
+          warning: `Vault data deleted, but removing the account identity failed: ${adminDeleteError.message}`,
+        },
+        { status: 200 }
+      );
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

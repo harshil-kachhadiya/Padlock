@@ -212,12 +212,20 @@ export default function Home() {
 
       <footer className="mt-auto border-t border-border py-6 text-center text-xs text-foreground-muted">
         <p>Padlock — your master password never leaves your device.</p>
-        <button
-          onClick={() => router.push("/privacy")}
-          className="mt-2 font-semibold text-navy-700 hover:underline dark:text-gold-500"
-        >
-          Privacy Policy
-        </button>
+        <div className="mt-2 flex justify-center gap-4 font-semibold">
+          <button
+            onClick={() => router.push("/privacy")}
+            className="text-navy-700 hover:underline dark:text-gold-500"
+          >
+            Privacy Policy
+          </button>
+          <button
+            onClick={() => router.push("/terms")}
+            className="text-navy-700 hover:underline dark:text-gold-500"
+          >
+            Terms of Service
+          </button>
+        </div>
       </footer>
     </div>
   );

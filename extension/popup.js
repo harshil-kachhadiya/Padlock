@@ -445,8 +445,15 @@ async function showVault(session, key) {
     }
   }
 
+  const expandByDefault = await fetchUserSetting(
+    session.access_token,
+    session.user.id,
+    "expand_all_items_default",
+    false
+  );
+
   allSection.querySelector(".section-summary").textContent = `All items (${entries.length})`;
-  allSection.open = matching.length === 0;
+  allSection.open = matching.length === 0 || expandByDefault;
 
   for (const { site, activePassword } of rest) {
     allList.appendChild(buildEntryNode(site, activePassword, session, key, refresh));
