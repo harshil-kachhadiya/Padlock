@@ -152,7 +152,15 @@ export default function DashboardPage() {
               {entries.length} saved credential{entries.length === 1 ? "" : "s"}
             </p>
           </div>
-          <Button onClick={() => router.push("/dashboard/add")}>+ Add entry</Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => router.push("/dashboard/export")}>
+              Export
+            </Button>
+            <Button variant="secondary" onClick={() => router.push("/dashboard/import")}>
+              Import
+            </Button>
+            <Button onClick={() => router.push("/dashboard/add")}>+ Add entry</Button>
+          </div>
         </div>
 
         {error && <Alert variant="error">{error}</Alert>}
