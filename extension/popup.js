@@ -119,6 +119,24 @@ async function getActiveTabUrl() {
 }
 
 async function boot() {
+  try {
+    await bootInner();
+  } catch (err) {
+    render("tpl-loading");
+    const msgEl = app.querySelector("#loading-message");
+    const spinner = app.querySelector(".spinner");
+    if (spinner) spinner.style.display = "none";
+    if (msgEl) msgEl.textContent = `Something went wrong: ${err.message}`;
+
+    const retryBtn = document.createElement("button");
+    retryBtn.className = "btn btn-secondary btn-sm";
+    retryBtn.textContent = "Retry";
+    retryBtn.addEventListener("click", boot);
+    msgEl?.after(retryBtn);
+  }
+}
+
+async function bootInner() {
   checkStaleClipboard();
   renderLoading("Checking session…");
   const session = await getSession();
@@ -391,7 +409,23 @@ async function showVault(session, key) {
   const activeUrl = await getActiveTabUrl();
   const activeHost = hostnameOf(activeUrl);
 
-  const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
+  let allSites;
+  try {
+    allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
+  } catch (err) {
+    vaultLoading.hidden = true;
+    matchLabel.hidden = true;
+    allSection.hidden = true;
+    matchEmpty.hidden = false;
+    matchEmpty.textContent = `Couldn't load your vault: ${err.message}`;
+
+    const retryBtn = document.createElement("button");
+    retryBtn.className = "btn btn-secondary btn-sm";
+    retryBtn.textContent = "Retry";
+    retryBtn.addEventListener("click", () => showVault(session, key));
+    matchEmpty.after(retryBtn);
+    return;
+  }
   vaultLoading.hidden = true;
 
   const entries = allSites
