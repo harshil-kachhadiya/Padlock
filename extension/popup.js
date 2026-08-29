@@ -70,39 +70,6 @@ async function getActiveTabUrl() {
   return tab?.url ?? "";
 }
 
-function hostnameOf(url) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return "";
-  }
-}
-
-// Second-level suffixes where the registrable domain needs 3 labels, not 2
-// (e.g. "example.co.uk", not just "co.uk"). Small pragmatic list, not a full PSL.
-const TWO_LABEL_SUFFIXES = new Set([
-  "co.uk", "org.uk", "ac.uk", "gov.uk",
-  "co.in", "com.au", "co.nz", "co.za",
-  "com.br", "com.cn", "co.jp", "co.kr",
-]);
-
-function registrableDomain(host) {
-  if (!host) return "";
-  const parts = host.split(".");
-  if (parts.length <= 2) return host;
-
-  const lastTwo = parts.slice(-2).join(".");
-  if (TWO_LABEL_SUFFIXES.has(lastTwo) && parts.length > 2) {
-    return parts.slice(-3).join(".");
-  }
-  return lastTwo;
-}
-
-function hostsMatch(a, b) {
-  if (!a || !b) return false;
-  return registrableDomain(a) === registrableDomain(b);
-}
-
 async function boot() {
   renderLoading("Checking session…");
   const session = await getSession();
@@ -195,11 +162,17 @@ async function handleUnlock(session, userRow) {
   }
 }
 
-function buildEntryNode(site, activePassword, session, key, onChanged) {
+function buildEntryNode(site, activePassword, session, key, onChanged, matchReason) {
   const entryTemplate = document.getElementById("tpl-entry");
   const node = entryTemplate.content.cloneNode(true);
   node.querySelector(".entry-name").textContent = site.site_name;
   node.querySelector(".entry-username").textContent = site.username || "";
+
+  const matchReasonEl = node.querySelector(".entry-match-reason");
+  if (matchReason) {
+    matchReasonEl.textContent = matchReason;
+    matchReasonEl.hidden = false;
+  }
 
   node.querySelector('[data-action="autofill"]').addEventListener("click", async (e) => {
     const button = e.currentTarget;
@@ -359,7 +332,10 @@ async function showVault(session, key) {
     matchEmpty.hidden = false;
   } else {
     for (const { site, activePassword } of matching) {
-      matchList.appendChild(buildEntryNode(site, activePassword, session, key, refresh));
+      const siteHost = hostnameOf(`https://${site.site_url}`);
+      const reason =
+        siteHost && siteHost !== activeHost ? `Saved for ${siteHost} — same domain` : null;
+      matchList.appendChild(buildEntryNode(site, activePassword, session, key, refresh, reason));
     }
   }
 

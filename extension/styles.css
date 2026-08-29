@@ -323,6 +323,13 @@ body {
   color: var(--text-muted);
 }
 
+.entry-match-reason {
+  margin-top: 2px;
+  font-size: 10px;
+  font-style: italic;
+  color: var(--navy-800);
+}
+
 .entry-actions {
   display: flex;
   align-items: center;
