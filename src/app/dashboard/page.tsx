@@ -252,6 +252,7 @@ export default function DashboardPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by site, URL, or username&hellip;"
+            aria-label="Search your vault"
             className="mb-4 w-full max-w-sm rounded-sm border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none placeholder:text-foreground-muted focus:border-navy-700 focus:ring-2 focus:ring-navy-700/30"
           />
         )}

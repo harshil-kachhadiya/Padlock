@@ -1,3 +1,5 @@
+"use client";
+
 import { InputHTMLAttributes, forwardRef, useId, useState } from "react";
 
 type PasswordInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {

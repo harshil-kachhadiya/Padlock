@@ -211,7 +211,13 @@ export default function Home() {
       </PageContainer>
 
       <footer className="mt-auto border-t border-border py-6 text-center text-xs text-foreground-muted">
-        Padlock — your master password never leaves your device.
+        <p>Padlock — your master password never leaves your device.</p>
+        <button
+          onClick={() => router.push("/privacy")}
+          className="mt-2 font-semibold text-navy-700 hover:underline dark:text-gold-500"
+        >
+          Privacy Policy
+        </button>
       </footer>
     </div>
   );

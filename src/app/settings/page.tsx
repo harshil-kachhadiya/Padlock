@@ -51,6 +51,10 @@ export default function SettingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
 
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
@@ -185,6 +189,41 @@ export default function SettingsPage() {
     } finally {
       setSubmitting(false);
       setProgress(null);
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmText !== "DELETE") return;
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const session = sessionData.session;
+      if (!session) {
+        router.replace("/login");
+        return;
+      }
+
+      const response = await fetch("/api/account/delete", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        setDeleteError(body.error ?? "Failed to delete account.");
+        setDeleting(false);
+        return;
+      }
+
+      await supabase.auth.signOut();
+      clearKey();
+      router.replace("/");
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Something went wrong.");
+      setDeleting(false);
     }
   }
 
@@ -354,6 +393,40 @@ export default function SettingsPage() {
                 </span>
               </span>
             </label>
+          </CardBody>
+        </Card>
+
+        <Card className="mt-6 border-red-600">
+          <CardHeader>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-red-600">
+              Danger zone
+            </h2>
+          </CardHeader>
+          <CardBody>
+            <p className="mb-4 text-xs leading-relaxed text-foreground-muted">
+              Permanently deletes your vault, notes, settings, and account record. This cannot be
+              undone — export your vault first if you want a copy.
+            </p>
+
+            <label className="mb-1.5 block text-sm font-semibold text-foreground">
+              Type DELETE to confirm
+            </label>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              className="mb-4 w-full max-w-xs rounded-sm border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/30"
+            />
+
+            {deleteError && <Alert variant="error">{deleteError}</Alert>}
+
+            <Button
+              variant="danger"
+              disabled={deleteConfirmText !== "DELETE" || deleting}
+              onClick={handleDeleteAccount}
+            >
+              {deleting ? "Deleting…" : "Delete my account"}
+            </Button>
           </CardBody>
         </Card>
       </PageContainer>
