@@ -349,23 +349,64 @@ body {
   flex-shrink: 0;
 }
 
-.entry-delete {
+.entry-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--navy-800);
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.entry-icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.entry-icon-btn:hover {
+  background: rgba(15, 45, 82, 0.08);
+}
+
+.entry-icon-btn-danger {
   color: var(--red);
+}
+
+.entry-icon-btn-danger:hover {
+  background: rgba(185, 28, 28, 0.1);
 }
 
 .entry-confirm {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   flex-basis: 100%;
-  justify-content: flex-end;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 4px;
+  background: #fef2f2;
+  border: 1px solid #f3c6c6;
 }
 
 .entry-confirm-label {
-  flex: 1;
-  font-size: 11px;
+  margin: 0 0 8px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--red);
+}
+
+.entry-confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.entry-confirm-actions .btn {
+  flex: 1;
+  width: auto;
+  margin-top: 0;
 }
 
 .loading-state {
