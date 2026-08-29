@@ -253,6 +253,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     })();
     return true;
   }
+
+  // --- Click-to-see-saved-logins dropdown ---------------------------------
+
+  if (message?.type === "PADLOCK_LIST_ENTRIES_FOR_HOST") {
+    (async () => {
+      try {
+        const session = await getSession();
+        if (!session) return sendResponse({ status: "signed-out", entries: [] });
+
+        const vaultKey = await loadVaultKey();
+        if (!vaultKey) return sendResponse({ status: "locked", entries: [] });
+
+        const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
+        const entries = activeEntriesForHost(allSites, message.host).map(({ site }) => ({
+          id: site.id,
+          siteName: site.site_name,
+          username: site.username || "",
+        }));
+
+        sendResponse({ status: "ok", entries });
+      } catch {
+        sendResponse({ status: "error", entries: [] });
+      }
+    })();
+    return true;
+  }
+
+  if (message?.type === "PADLOCK_GET_CREDENTIALS") {
+    (async () => {
+      try {
+        const session = await getSession();
+        const vaultKey = await loadVaultKey();
+        if (!session || !vaultKey) {
+          return sendResponse({ ok: false, error: "Vault is locked." });
+        }
+
+        const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
+        const site = allSites.find((s) => s.id === message.siteId);
+        if (!site) return sendResponse({ ok: false, error: "Entry not found." });
+
+        const activePassword = (site.passwords || [])
+          .filter((p) => !p.deleted)
+          .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
+        if (!activePassword) return sendResponse({ ok: false, error: "Entry not found." });
+
+        const password = await decryptEntry(vaultKey, activePassword.encrypted_password);
+        sendResponse({ ok: true, username: site.username || "", password });
+      } catch (err) {
+        sendResponse({ ok: false, error: err.message });
+      }
+    })();
+    return true;
+  }
 });
 
 chrome.tabs.onActivated.addListener(rebuildMenuForActiveTab);

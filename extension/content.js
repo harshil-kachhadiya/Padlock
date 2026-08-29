@@ -223,3 +223,145 @@ function showSavePromptBanner(capture, isUpdate) {
     showSavePromptBanner(capture, decision.isUpdate);
   }
 })();
+
+// --- Click-a-field-to-see-saved-logins dropdown ---------------------------
+
+function escapeHtml(str) {
+  return String(str).replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
+}
+
+let dropdownHost = null;
+let dropdownField = null;
+
+function removeDropdown() {
+  if (dropdownHost) dropdownHost.remove();
+  dropdownHost = null;
+  dropdownField = null;
+}
+
+function positionDropdown(hostEl, fieldEl) {
+  const rect = fieldEl.getBoundingClientRect();
+  hostEl.style.top = `${rect.bottom + window.scrollY + 4}px`;
+  hostEl.style.left = `${rect.left + window.scrollX}px`;
+  hostEl.style.width = `${Math.max(rect.width, 220)}px`;
+}
+
+function isSuggestableField(el) {
+  if (!(el instanceof HTMLInputElement)) return false;
+  if (el.type === "password") return isVisible(el);
+
+  const passwordField = findPasswordField();
+  return Boolean(passwordField && el === findUsernameField(passwordField));
+}
+
+async function showSuggestionsDropdown(fieldEl) {
+  if (dropdownField === fieldEl) return;
+  removeDropdown();
+
+  const host = document.createElement("div");
+  host.style.cssText = "all:initial;position:absolute;z-index:2147483647;display:block;";
+  document.documentElement.appendChild(host);
+  positionDropdown(host, fieldEl);
+
+  dropdownHost = host;
+  dropdownField = fieldEl;
+
+  const shadow = host.attachShadow({ mode: "closed" });
+  shadow.innerHTML = `
+    <style>
+      .list {
+        font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+        background: #ffffff;
+        border: 1px solid #dde1e5;
+        border-top: 2px solid #ffbe2e;
+        border-radius: 4px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+        overflow: hidden;
+      }
+      .loading, .empty { padding: 10px 12px; font-size: 12px; color: #4d5661; }
+      .item {
+        display: flex; flex-direction: column; align-items: flex-start;
+        width: 100%; text-align: left; padding: 8px 12px;
+        border: none; border-bottom: 1px solid #f1f3f5;
+        background: transparent; cursor: pointer; font-family: inherit;
+      }
+      .item:last-child { border-bottom: none; }
+      .item:hover { background: #f8f9fa; }
+      .item-name { font-size: 12px; font-weight: 700; color: #1c1c1c; }
+      .item-user { font-size: 11px; color: #4d5661; }
+    </style>
+    <div class="list"><div class="loading">Loading saved logins&hellip;</div></div>
+  `;
+
+  const currentHost = location.hostname.replace(/^www\./, "");
+  const response = await chrome.runtime.sendMessage({
+    type: "PADLOCK_LIST_ENTRIES_FOR_HOST",
+    host: currentHost,
+  });
+
+  if (dropdownField !== fieldEl) return; // focus moved on while we were awaiting
+
+  const listEl = shadow.querySelector(".list");
+
+  if (response?.status === "locked") {
+    listEl.innerHTML = `<div class="empty">Padlock is locked — open the popup to unlock</div>`;
+    return;
+  }
+
+  if (!response?.entries?.length) {
+    removeDropdown();
+    return;
+  }
+
+  listEl.innerHTML = response.entries
+    .map(
+      (entry) => `
+        <button class="item" data-id="${escapeHtml(entry.id)}">
+          <span class="item-name">${escapeHtml(entry.siteName)}</span>
+          <span class="item-user">${escapeHtml(entry.username)}</span>
+        </button>`
+    )
+    .join("");
+
+  listEl.querySelectorAll(".item").forEach((btn) => {
+    btn.addEventListener("mousedown", async (e) => {
+      e.preventDefault(); // keep focus on the field so this still counts as a click
+      const siteId = btn.dataset.id;
+      const creds = await chrome.runtime.sendMessage({ type: "PADLOCK_GET_CREDENTIALS", siteId });
+      removeDropdown();
+      if (!creds?.ok) return;
+
+      const passwordField = findPasswordField();
+      const usernameField = findUsernameField(passwordField);
+      if (usernameField && creds.username) setNativeValue(usernameField, creds.username);
+      if (passwordField && creds.password) setNativeValue(passwordField, creds.password);
+    });
+  });
+}
+
+document.addEventListener("focusin", (e) => {
+  if (isSuggestableField(e.target)) {
+    showSuggestionsDropdown(e.target);
+  } else {
+    removeDropdown();
+  }
+});
+
+document.addEventListener("focusout", () => {
+  setTimeout(removeDropdown, 150);
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") removeDropdown();
+});
+
+window.addEventListener(
+  "scroll",
+  () => {
+    if (dropdownHost && dropdownField) positionDropdown(dropdownHost, dropdownField);
+  },
+  true
+);
