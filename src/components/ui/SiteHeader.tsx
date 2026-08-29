@@ -37,9 +37,15 @@ export function SiteHeader({ userEmail, onSignOut }: SiteHeaderProps) {
           </button>
 
           <div className="flex items-center gap-4">
-            {userEmail && (
-              <>
-                <nav className="hidden items-center gap-3 sm:flex">
+            <nav className="hidden items-center gap-3 sm:flex">
+              <button
+                onClick={() => router.push("/features")}
+                className="text-xs font-semibold text-gray-200 hover:text-white"
+              >
+                Features
+              </button>
+              {userEmail && (
+                <>
                   <button
                     onClick={() => router.push("/profile")}
                     className="text-xs font-semibold text-gray-200 hover:text-white"
@@ -52,9 +58,11 @@ export function SiteHeader({ userEmail, onSignOut }: SiteHeaderProps) {
                   >
                     Settings
                   </button>
-                </nav>
-                <span className="hidden text-xs text-gray-300 sm:inline">{userEmail}</span>
-              </>
+                </>
+              )}
+            </nav>
+            {userEmail && (
+              <span className="hidden text-xs text-gray-300 sm:inline">{userEmail}</span>
             )}
             <ThemeToggle />
             {onSignOut && (
