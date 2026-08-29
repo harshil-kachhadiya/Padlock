@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { decryptEntry, type EncryptedPayload } from "@/lib/crypto";
 import { useKey } from "@/lib/keyContext";
+import { useSettings } from "@/lib/settingsContext";
 import { Alert, Button, Card, SiteHeader, PageContainer } from "@/components/ui";
 
 type Entry = {
@@ -28,6 +29,7 @@ type SiteRow = {
 export default function DashboardPage() {
   const router = useRouter();
   const { key, clearKey } = useKey();
+  const { settings } = useSettings();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,7 +90,7 @@ export default function DashboardPage() {
           username: row.username,
           passwordId: activePassword.id,
           decryptedPassword: plaintext,
-          revealed: false,
+          revealed: settings.reveal_password_default,
         } satisfies Entry;
       })
     );

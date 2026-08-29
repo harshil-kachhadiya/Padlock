@@ -14,6 +14,8 @@ import {
   type EncryptedPayload,
 } from "@/lib/crypto";
 import { useKey } from "@/lib/keyContext";
+import { useTheme } from "@/lib/themeContext";
+import { useSettings } from "@/lib/settingsContext";
 import {
   Alert,
   Button,
@@ -35,6 +37,8 @@ const AUTO_LOCK_OPTIONS = [
 export default function SettingsPage() {
   const router = useRouter();
   const { setKey, clearKey, autoLockMs, setAutoLockMs } = useKey();
+  const { theme, setTheme } = useTheme();
+  const { settings, updateSetting } = useSettings();
 
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -271,13 +275,88 @@ export default function SettingsPage() {
                 <Button
                   key={option.ms}
                   variant={autoLockMs === option.ms ? "primary" : "secondary"}
-                  onClick={() => setAutoLockMs(option.ms)}
+                  onClick={() => {
+                    setAutoLockMs(option.ms);
+                    updateSetting("auto_lock_ms", option.ms);
+                  }}
                   className="px-4 py-2 text-xs"
                 >
                   {option.label}
                 </Button>
               ))}
             </div>
+          </CardBody>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-foreground-muted">
+              Appearance
+            </h2>
+          </CardHeader>
+          <CardBody>
+            <p className="mb-4 text-xs leading-relaxed text-foreground-muted">
+              Applies immediately and syncs across your devices.
+            </p>
+            <div className="flex gap-2">
+              {(["light", "dark"] as const).map((option) => (
+                <Button
+                  key={option}
+                  variant={theme === option ? "primary" : "secondary"}
+                  onClick={() => {
+                    setTheme(option);
+                    updateSetting("theme", option);
+                  }}
+                  className="px-4 py-2 text-xs capitalize"
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-foreground-muted">
+              Dashboard
+            </h2>
+          </CardHeader>
+          <CardBody className="space-y-4">
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={settings.reveal_password_default}
+                onChange={(e) => updateSetting("reveal_password_default", e.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Show passwords by default
+                </span>
+                <span className="block text-xs text-foreground-muted">
+                  Passwords appear in plain text on the dashboard instead of masked with dots.
+                </span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={settings.expand_all_items_default}
+                onChange={(e) => updateSetting("expand_all_items_default", e.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Expand &ldquo;All items&rdquo; by default
+                </span>
+                <span className="block text-xs text-foreground-muted">
+                  Applies to the browser extension&apos;s popup — keeps the full entry list
+                  expanded instead of collapsed.
+                </span>
+              </span>
+            </label>
           </CardBody>
         </Card>
       </PageContainer>

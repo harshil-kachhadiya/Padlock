@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { KeyProvider } from "@/lib/keyContext";
 import { ThemeProvider } from "@/lib/themeContext";
+import { SettingsProvider, SettingsSync } from "@/lib/settingsContext";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,7 +29,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <ThemeProvider>
-          <KeyProvider>{children}</KeyProvider>
+          <KeyProvider>
+            <SettingsProvider>
+              <SettingsSync>{children}</SettingsSync>
+            </SettingsProvider>
+          </KeyProvider>
         </ThemeProvider>
       </body>
     </html>

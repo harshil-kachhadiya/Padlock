@@ -7,6 +7,7 @@ type Theme = "light" | "dark";
 type ThemeContextValue = {
   theme: Theme;
   toggleTheme: () => void;
+  setTheme: (theme: Theme) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -14,13 +15,13 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 const STORAGE_KEY = "padlock-theme";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY) as Theme | null;
     const preferred: Theme =
       stored ?? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    setTheme(preferred);
+    setThemeState(preferred);
   }, []);
 
   useEffect(() => {
@@ -29,11 +30,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [theme]);
 
   function toggleTheme() {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+    setThemeState((prev) => (prev === "light" ? "dark" : "light"));
+  }
+
+  function setTheme(next: Theme) {
+    setThemeState(next);
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>{children}</ThemeContext.Provider>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+      {children}
+    </ThemeContext.Provider>
   );
 }
 
