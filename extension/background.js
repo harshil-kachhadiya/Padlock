@@ -132,6 +132,16 @@ const IGNORED_HOSTS_KEY = "padlock_ignored_hosts"; // chrome.storage.local: stri
 const PENDING_CAPTURE_PREFIX = "padlock_pending_capture_"; // + tabId, chrome.storage.session
 const PENDING_CAPTURE_TTL_MS = 20_000;
 
+// Trust boundary: a content script's messages carry a `host`/`siteId` value
+// it claims, but that script runs inside whatever page it was injected into.
+// If that page's script ever finds an injection point into it, a forged
+// message could otherwise ask for a different site's saved credentials. So
+// wherever the sender is a content script (sender.tab is set), derive the
+// host from the tab's own URL instead of trusting the message field.
+function hostFromSender(sender) {
+  return sender.tab?.url ? hostnameOf(sender.tab.url) : null;
+}
+
 async function getIgnoredHosts() {
   const stored = await chrome.storage.local.get(IGNORED_HOSTS_KEY);
   return stored[IGNORED_HOSTS_KEY] || [];
@@ -147,13 +157,14 @@ async function addIgnoredHost(host) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "PADLOCK_CAPTURE_SUBMIT") {
     const tabId = sender.tab?.id;
-    if (tabId == null) return;
+    const host = hostFromSender(sender);
+    if (tabId == null || !host) return;
 
     chrome.storage.session.set({
       [`${PENDING_CAPTURE_PREFIX}${tabId}`]: {
         username: message.username,
         password: message.password,
-        host: message.host,
+        host,
         capturedAt: Date.now(),
       },
     });
@@ -163,7 +174,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "PADLOCK_GET_PENDING_CAPTURE") {
     (async () => {
       const tabId = sender.tab?.id;
-      if (tabId == null) return sendResponse(null);
+      const currentHost = hostFromSender(sender);
+      if (tabId == null || !currentHost) return sendResponse(null);
 
       const storageKey = `${PENDING_CAPTURE_PREFIX}${tabId}`;
       const stored = await chrome.storage.session.get(storageKey);
@@ -172,7 +184,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
       if (!capture) return sendResponse(null);
       if (Date.now() - capture.capturedAt > PENDING_CAPTURE_TTL_MS) return sendResponse(null);
-      if (!hostsMatch(capture.host, message.currentHost)) return sendResponse(null);
+      if (!hostsMatch(capture.host, currentHost)) return sendResponse(null);
 
       const ignored = await getIgnoredHosts();
       if (ignored.some((h) => hostsMatch(h, capture.host))) return sendResponse(null);
@@ -185,12 +197,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "PADLOCK_CHECK_SHOULD_PROMPT") {
     (async () => {
       try {
+        const host = hostFromSender(sender);
+        if (!host) return sendResponse({ show: false });
+
         const session = await getSession();
         const vaultKey = await loadVaultKey();
         if (!session || !vaultKey) return sendResponse({ show: false });
 
         const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
-        const candidates = activeEntriesForHost(allSites, message.host).filter(
+        const candidates = activeEntriesForHost(allSites, host).filter(
           ({ site }) => (site.username || "") === (message.username || "")
         );
 
@@ -210,6 +225,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "PADLOCK_SAVE_CAPTURE") {
     (async () => {
       try {
+        const host = hostFromSender(sender);
+        if (!host) return sendResponse({ ok: false, error: "Unknown page." });
+
         const session = await getSession();
         const vaultKey = await loadVaultKey();
         if (!session || !vaultKey) {
@@ -217,7 +235,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
-        const existing = activeEntriesForHost(allSites, message.host).find(
+        const existing = activeEntriesForHost(allSites, host).find(
           ({ site }) => (site.username || "") === (message.username || "")
         );
 
@@ -227,12 +245,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           await updatePassword(session.access_token, existing.activePassword.id, encryptedPassword);
         } else {
           const siteName =
-            message.host.split(".").slice(0, -1).join(".").replace(/^\w/, (c) => c.toUpperCase()) ||
-            message.host;
+            host.split(".").slice(0, -1).join(".").replace(/^\w/, (c) => c.toUpperCase()) || host;
 
           const newSite = await createSite(session.access_token, session.user.id, {
             siteName,
-            siteUrl: message.host,
+            siteUrl: host,
             username: message.username,
           });
           await createPassword(session.access_token, session.user.id, newSite.id, encryptedPassword);
@@ -248,7 +265,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message?.type === "PADLOCK_IGNORE_HOST") {
     (async () => {
-      await addIgnoredHost(message.host);
+      const host = hostFromSender(sender);
+      if (host) await addIgnoredHost(host);
       sendResponse({ ok: true });
     })();
     return true;
@@ -259,6 +277,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "PADLOCK_LIST_ENTRIES_FOR_HOST") {
     (async () => {
       try {
+        const host = hostFromSender(sender);
+        if (!host) return sendResponse({ status: "error", entries: [] });
+
         const session = await getSession();
         if (!session) return sendResponse({ status: "signed-out", entries: [] });
 
@@ -266,7 +287,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (!vaultKey) return sendResponse({ status: "locked", entries: [] });
 
         const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
-        const entries = activeEntriesForHost(allSites, message.host).map(({ site }) => ({
+        const entries = activeEntriesForHost(allSites, host).map(({ site }) => ({
           id: site.id,
           siteName: site.site_name,
           username: site.username || "",
@@ -283,6 +304,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "PADLOCK_GET_CREDENTIALS") {
     (async () => {
       try {
+        const host = hostFromSender(sender);
+        if (!host) return sendResponse({ ok: false, error: "Unknown page." });
+
         const session = await getSession();
         const vaultKey = await loadVaultKey();
         if (!session || !vaultKey) {
@@ -292,6 +316,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
         const site = allSites.find((s) => s.id === message.siteId);
         if (!site) return sendResponse({ ok: false, error: "Entry not found." });
+
+        // Defense in depth: even though the dropdown that requests this only
+        // ever lists entries already scoped to this tab's host, re-verify here
+        // too, so a compromised content-script context can't request an
+        // unrelated site's credentials just by supplying a different siteId.
+        if (!hostsMatch(host, hostnameOf(`https://${site.site_url}`))) {
+          return sendResponse({ ok: false, error: "This entry doesn't belong to this site." });
+        }
 
         const activePassword = (site.passwords || [])
           .filter((p) => !p.deleted)
