@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { generateSalt, deriveKey, createVerifier } from "@/lib/crypto";
 import { useKey } from "@/lib/keyContext";
-import { Alert, Button, Card, CardBody, Input, SiteHeader, PageContainer } from "@/components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  CardBody,
+  PasswordInput,
+  SiteHeader,
+  PageContainer,
+} from "@/components/ui";
 
 export default function SetupPage() {
   const router = useRouter();
@@ -124,17 +132,15 @@ export default function SetupPage() {
             </p>
 
             <form onSubmit={handleSubmit} className="mt-6">
-              <Input
+              <PasswordInput
                 label="Master password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoFocus
               />
 
-              <Input
+              <PasswordInput
                 label="Confirm master password"
-                type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />

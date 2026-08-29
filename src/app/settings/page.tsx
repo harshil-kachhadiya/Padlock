@@ -22,7 +22,7 @@ import {
   Card,
   CardBody,
   CardHeader,
-  Input,
+  PasswordInput,
   SiteHeader,
   PageContainer,
 } from "@/components/ui";
@@ -222,23 +222,20 @@ export default function SettingsPage() {
             </p>
 
             <form onSubmit={handleChangePassword}>
-              <Input
+              <PasswordInput
                 label="Current master password"
-                type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 autoComplete="current-password"
               />
-              <Input
+              <PasswordInput
                 label="New master password"
-                type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 autoComplete="new-password"
               />
-              <Input
+              <PasswordInput
                 label="Confirm new master password"
-                type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 autoComplete="new-password"

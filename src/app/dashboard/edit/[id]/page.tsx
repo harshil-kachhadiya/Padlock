@@ -5,7 +5,16 @@ import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { decryptEntry, encryptEntry, type EncryptedPayload } from "@/lib/crypto";
 import { useKey } from "@/lib/keyContext";
-import { Alert, Button, Card, CardBody, Input, SiteHeader, PageContainer } from "@/components/ui";
+import {
+  Alert,
+  Button,
+  Card,
+  CardBody,
+  Input,
+  PasswordInput,
+  SiteHeader,
+  PageContainer,
+} from "@/components/ui";
 
 export default function EditEntryPage() {
   const router = useRouter();
@@ -162,9 +171,8 @@ export default function EditEntryPage() {
                 onChange={(e) => setUsername(e.target.value)}
               />
 
-              <Input
+              <PasswordInput
                 label="Password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />

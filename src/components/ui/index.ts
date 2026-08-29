@@ -1,5 +1,6 @@
 export { Button } from "./Button";
 export { Input } from "./Input";
+export { PasswordInput } from "./PasswordInput";
 export { Card, CardHeader, CardBody } from "./Card";
 export { Alert } from "./Alert";
 export { SiteHeader } from "./SiteHeader";
