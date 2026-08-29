@@ -400,7 +400,6 @@ async function showVault(session, key) {
   const matchEmpty = app.querySelector("#match-empty");
   const matchLabel = app.querySelector("#match-label");
   const allSection = app.querySelector("#all-section");
-  const vaultLoading = app.querySelector("#vault-loading");
 
   matchLabel.hidden = true;
   matchEmpty.hidden = true;
@@ -413,7 +412,6 @@ async function showVault(session, key) {
   try {
     allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
   } catch (err) {
-    vaultLoading.hidden = true;
     matchLabel.hidden = true;
     allSection.hidden = true;
     matchEmpty.hidden = false;
@@ -426,7 +424,6 @@ async function showVault(session, key) {
     matchEmpty.after(retryBtn);
     return;
   }
-  vaultLoading.hidden = true;
 
   const entries = allSites
     .map((site) => {
