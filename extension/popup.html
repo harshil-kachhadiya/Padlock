@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Padlock</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <span class="badge">P</span>
+      <div>
+        <div class="title">Padlock</div>
+        <div class="subtitle">Secure Credential Vault</div>
+      </div>
+    </header>
+
+    <main id="app" class="app">
+      <p class="muted">Loading&hellip;</p>
+    </main>
+
+    <template id="tpl-signin">
+      <div class="panel">
+        <h1>Sign in</h1>
+        <p class="muted">Verify your identity to continue to Padlock.</p>
+        <button class="btn btn-primary" data-action="sign-in">Sign in with Google</button>
+      </div>
+    </template>
+
+    <template id="tpl-no-vault">
+      <div class="panel">
+        <h1>Vault not set up</h1>
+        <p class="muted">Finish setting up your master password on the Padlock website first.</p>
+        <button class="btn btn-secondary" data-action="open-website">Open Padlock website</button>
+        <button class="btn btn-ghost" data-action="sign-out">Sign out</button>
+      </div>
+    </template>
+
+    <template id="tpl-unlock">
+      <div class="panel">
+        <h1>Unlock vault</h1>
+        <p class="muted">Enter your master password. It is never sent anywhere.</p>
+        <input type="password" id="unlock-password" class="input" placeholder="Master password" autofocus />
+        <p class="error" id="unlock-error" hidden></p>
+        <button class="btn btn-primary" data-action="unlock">Unlock</button>
+        <button class="btn btn-ghost" data-action="sign-out">Sign out</button>
+      </div>
+    </template>
+
+    <template id="tpl-vault">
+      <div class="panel">
+        <div class="vault-header">
+          <h1>Your vault</h1>
+          <div>
+            <button class="btn btn-ghost btn-sm" data-action="lock">Lock</button>
+            <button class="btn btn-ghost btn-sm" data-action="sign-out">Sign out</button>
+          </div>
+        </div>
+        <button class="btn btn-secondary" data-action="add-entry">+ Add entry</button>
+        <p class="muted" id="vault-empty" hidden>No entries yet. Add one above.</p>
+        <ul class="entry-list" id="entry-list"></ul>
+      </div>
+    </template>
+
+    <template id="tpl-entry">
+      <li class="entry">
+        <div class="entry-info">
+          <div class="entry-name"></div>
+          <div class="entry-username"></div>
+        </div>
+        <div class="entry-actions">
+          <button class="btn btn-primary btn-sm" data-action="autofill">Autofill</button>
+          <button class="btn btn-ghost btn-sm" data-action="edit">Edit</button>
+          <button class="btn btn-ghost btn-sm entry-delete" data-action="delete">Delete</button>
+        </div>
+      </li>
+    </template>
+
+    <template id="tpl-entry-form">
+      <div class="panel">
+        <h1 id="entry-form-title">Add entry</h1>
+        <input type="text" id="form-site-name" class="input" placeholder="Site name (e.g. Gmail)" />
+        <input type="text" id="form-site-url" class="input" placeholder="Site URL (e.g. gmail.com)" />
+        <input type="text" id="form-username" class="input" placeholder="Username" />
+        <input type="password" id="form-password" class="input" placeholder="Password" />
+        <p class="error" id="entry-form-error" hidden></p>
+        <button class="btn btn-primary" data-action="save-entry">Save</button>
+        <button class="btn btn-ghost" data-action="cancel-entry">Cancel</button>
+      </div>
+    </template>
+
+    <script src="config.js"></script>
+    <script src="crypto.js"></script>
+    <script src="auth.js"></script>
+    <script src="supabaseRest.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>

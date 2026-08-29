@@ -1,14 +1,22 @@
-// Zero-knowledge crypto helpers — ported from src/lib/crypto.ts. Native Web Crypto API only.
+// Zero-knowledge crypto helpers. Native Web Crypto API only — no external crypto packages.
 
 const PBKDF2_ITERATIONS = 250_000;
 const VERIFIER_STRING = "PADLOCK_VERIFIER";
 
-function generateSalt() {
+export type EncryptedPayload = {
+  iv: number[];
+  data: number[];
+};
+
+export function generateSalt(): number[] {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   return Array.from(salt);
 }
 
-async function deriveKey(masterPassword, salt) {
+export async function deriveKey(
+  masterPassword: string,
+  salt: number[]
+): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const baseKey = await crypto.subtle.importKey(
     "raw",
@@ -27,15 +35,22 @@ async function deriveKey(masterPassword, salt) {
     },
     baseKey,
     { name: "AES-GCM", length: 256 },
-    true,
+    false,
     ["encrypt", "decrypt"]
   );
 }
 
-async function encryptEntry(key, plaintext) {
+export async function encryptEntry(
+  key: CryptoKey,
+  plaintext: string
+): Promise<EncryptedPayload> {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encoder = new TextEncoder();
-  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(plaintext));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    encoder.encode(plaintext)
+  );
 
   return {
     iv: Array.from(iv),
@@ -43,7 +58,10 @@ async function encryptEntry(key, plaintext) {
   };
 }
 
-async function decryptEntry(key, { iv, data }) {
+export async function decryptEntry(
+  key: CryptoKey,
+  { iv, data }: EncryptedPayload
+): Promise<string> {
   const plaintextBuffer = await crypto.subtle.decrypt(
     { name: "AES-GCM", iv: new Uint8Array(iv) },
     key,
@@ -53,27 +71,18 @@ async function decryptEntry(key, { iv, data }) {
   return new TextDecoder().decode(plaintextBuffer);
 }
 
-async function createVerifier(key) {
+export async function createVerifier(key: CryptoKey): Promise<EncryptedPayload> {
   return encryptEntry(key, VERIFIER_STRING);
 }
 
-async function checkVerifier(key, verifier) {
+export async function checkVerifier(
+  key: CryptoKey,
+  verifier: EncryptedPayload
+): Promise<boolean> {
   try {
     const decrypted = await decryptEntry(key, verifier);
     return decrypted === VERIFIER_STRING;
   } catch {
     return false;
   }
-}
-
-async function exportKeyRaw(key) {
-  const raw = await crypto.subtle.exportKey("raw", key);
-  return Array.from(new Uint8Array(raw));
-}
-
-async function importKeyRaw(rawBytes) {
-  return crypto.subtle.importKey("raw", new Uint8Array(rawBytes), { name: "AES-GCM" }, true, [
-    "encrypt",
-    "decrypt",
-  ]);
 }

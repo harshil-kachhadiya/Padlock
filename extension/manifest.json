@@ -7,7 +7,7 @@
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
+      "48": "icons/icon128.png",
       "128": "icons/icon128.png"
     }
   },
@@ -21,26 +21,14 @@
       "run_at": "document_idle"
     }
   ],
-  "oauth2": {
-    "client_id": "YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com",
-    "scopes": [
-      "openid",
-      "email",
-      "profile"
-    ]
-  },
-  "permissions": [
-    "storage",
-    "activeTab",
-    "scripting"
-  ],
+  "permissions": ["storage", "activeTab", "scripting", "identity"],
   "host_permissions": [
     "<all_urls>",
-    "https://YOUR_PROJECT_REF.supabase.co/*"
+    "https://zfaisbajepehsrnjkpwc.supabase.co/*"
   ],
   "icons": {
     "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
+    "48": "icons/icon128.png",
     "128": "icons/icon128.png"
   }
 }
