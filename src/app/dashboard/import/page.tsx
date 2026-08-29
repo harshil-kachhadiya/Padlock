@@ -20,7 +20,7 @@ type ImportResult = {
   failed: { row: ParsedRow; error: string }[];
 };
 
-function parseFile(text: string): { rows: ParsedRow[]; error: string | null } {
+function parseCsvFile(text: string): { rows: ParsedRow[]; error: string | null } {
   const table = parseCsv(text);
   if (table.length === 0) return { rows: [], error: "The file is empty." };
 
@@ -46,6 +46,47 @@ function parseFile(text: string): { rows: ParsedRow[]; error: string | null } {
   }));
 
   return { rows: rows.filter((r) => r.siteName && r.siteUrl && r.password), error: null };
+}
+
+function parseJsonFile(text: string): { rows: ParsedRow[]; error: string | null } {
+  let parsed: unknown;
+
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { rows: [], error: "That file isn't valid JSON." };
+  }
+
+  if (!Array.isArray(parsed)) {
+    return { rows: [], error: "Expected a JSON array of entries." };
+  }
+
+  const rows: ParsedRow[] = parsed.map((item) => {
+    const record = (item ?? {}) as Record<string, unknown>;
+    const get = (...keys: string[]) => {
+      for (const k of keys) {
+        if (typeof record[k] === "string") return (record[k] as string).trim();
+      }
+      return "";
+    };
+
+    return {
+      siteName: get("site_name", "siteName", "name"),
+      siteUrl: get("site_url", "siteUrl", "url"),
+      username: get("username", "user"),
+      password: get("password", "pass"),
+    };
+  });
+
+  return { rows: rows.filter((r) => r.siteName && r.siteUrl && r.password), error: null };
+}
+
+function parseFile(
+  text: string,
+  filename: string
+): { rows: ParsedRow[]; error: string | null } {
+  const looksLikeJson = filename.toLowerCase().endsWith(".json") || text.trim().startsWith("[");
+  return looksLikeJson ? parseJsonFile(text) : parseCsvFile(text);
 }
 
 export default function ImportPage() {
@@ -82,7 +123,7 @@ export default function ImportPage() {
     setParseError(null);
 
     const text = await file.text();
-    const { rows: parsed, error } = parseFile(text);
+    const { rows: parsed, error } = parseFile(text, file.name);
 
     if (error) {
       setParseError(error);
@@ -165,10 +206,11 @@ export default function ImportPage() {
 
         <h1 className="font-serif text-2xl font-bold text-foreground">Import entries</h1>
         <p className="mt-1 text-sm text-foreground-muted">
-          Upload a CSV file with a header row: <code className="font-mono">site_name</code>,{" "}
-          <code className="font-mono">site_url</code>, <code className="font-mono">username</code>
-          , <code className="font-mono">password</code>. Each password is encrypted in your
-          browser before it&apos;s uploaded.
+          Upload a CSV or JSON file exported from Padlock — a CSV needs a header row of{" "}
+          <code className="font-mono">site_name</code>, <code className="font-mono">site_url</code>
+          , <code className="font-mono">username</code>, <code className="font-mono">password</code>
+          ; a JSON file needs an array of objects with those same keys. Each password is encrypted
+          in your browser before it&apos;s uploaded.
         </p>
 
         <Card className="mt-6">
@@ -176,7 +218,7 @@ export default function ImportPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.json,text/csv,application/json"
               onChange={handleFileChange}
               className="block w-full text-sm text-foreground file:mr-4 file:rounded-sm file:border file:border-border file:bg-surface-muted file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground"
             />
