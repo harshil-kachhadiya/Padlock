@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { encryptEntry } from "@/lib/crypto";
 import { isValidBase32Secret } from "@/lib/totp";
-import { parseTagsInput } from "@/lib/tags";
 import { useKey } from "@/lib/keyContext";
 import {
   Alert,
@@ -27,7 +26,6 @@ export default function AddEntryPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [totpSecret, setTotpSecret] = useState("");
-  const [tagsInput, setTagsInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -84,7 +82,6 @@ export default function AddEntryPage() {
           username,
           encryptedPassword,
           encryptedTotpSecret,
-          tags: parseTagsInput(tagsInput),
         }),
       });
 
@@ -150,15 +147,6 @@ export default function AddEntryPage() {
                 onChange={(e) => setTotpSecret(e.target.value)}
                 placeholder="e.g. JBSWY3DPEHPK3PXP"
                 hint="The base32 setup key from the site's 2FA QR code — Padlock will generate live codes."
-              />
-
-              <Input
-                label="Tags (optional)"
-                type="text"
-                value={tagsInput}
-                onChange={(e) => setTagsInput(e.target.value)}
-                placeholder="work, banking"
-                hint="Comma-separated. Used for filtering your vault."
               />
 
               {error && <Alert variant="error">{error}</Alert>}

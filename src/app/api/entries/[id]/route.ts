@@ -48,9 +48,6 @@ export async function PATCH(
   if ("encryptedTotpSecret" in body) {
     siteUpdate.encrypted_totp_secret = body.encryptedTotpSecret;
   }
-  if (Array.isArray(body.tags)) {
-    siteUpdate.tags = body.tags;
-  }
 
   const { error: siteUpdateError } = await supabase
     .from("sites")

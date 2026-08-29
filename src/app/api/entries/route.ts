@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing authorization header" }, { status: 401 });
   }
 
-  const { siteName, siteUrl, username, encryptedPassword, encryptedTotpSecret, tags } =
+  const { siteName, siteUrl, username, encryptedPassword, encryptedTotpSecret } =
     await request.json();
 
   if (!siteName || !siteUrl || !encryptedPassword) {
@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
       site_url: siteUrl,
       username: username || null,
       encrypted_totp_secret: encryptedTotpSecret || null,
-      tags: Array.isArray(tags) ? tags : [],
     })
     .select("id")
     .single();
