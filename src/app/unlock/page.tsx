@@ -6,6 +6,14 @@ import { supabase } from "@/lib/supabaseClient";
 import { deriveKey, checkVerifier, type EncryptedPayload } from "@/lib/crypto";
 import { useKey } from "@/lib/keyContext";
 import {
+  loadLockoutState,
+  recordFailedAttempt,
+  recordSuccess,
+  attemptsRemaining,
+  isLockedOut,
+  secondsUntilUnlocked,
+} from "@/lib/unlockLockout";
+import {
   Alert,
   Button,
   Card,
@@ -25,6 +33,8 @@ export default function UnlockPage() {
   const [submitting, setSubmitting] = useState(false);
   const [salt, setSalt] = useState<number[] | null>(null);
   const [verifier, setVerifier] = useState<EncryptedPayload | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [lockedSeconds, setLockedSeconds] = useState(0);
 
   useEffect(() => {
     async function loadVault() {
@@ -48,19 +58,34 @@ export default function UnlockPage() {
         return;
       }
 
+      setUserId(user.id);
       setSalt(row.salt as number[]);
       setVerifier(row.verifier as EncryptedPayload);
+
+      const lockout = loadLockoutState(user.id);
+      if (isLockedOut(lockout)) {
+        setLockedSeconds(secondsUntilUnlocked(lockout));
+      }
+
       setChecking(false);
     }
 
     loadVault();
   }, [router]);
 
+  useEffect(() => {
+    if (lockedSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setLockedSeconds((s) => Math.max(s - 1, 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lockedSeconds]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!salt || !verifier) return;
+    if (!salt || !verifier || !userId || lockedSeconds > 0) return;
 
     setSubmitting(true);
 
@@ -69,11 +94,25 @@ export default function UnlockPage() {
       const isValid = await checkVerifier(derivedKey, verifier);
 
       if (!isValid) {
-        setError("Incorrect master password.");
+        const state = recordFailedAttempt(userId);
+
+        if (isLockedOut(state)) {
+          setLockedSeconds(secondsUntilUnlocked(state));
+          setError(
+            `Too many incorrect attempts. Try again in ${secondsUntilUnlocked(state)}s.`
+          );
+        } else {
+          const remaining = attemptsRemaining(state);
+          setError(
+            `Incorrect master password. ${remaining} attempt${remaining === 1 ? "" : "s"} left before a temporary lockout.`
+          );
+        }
+
         setSubmitting(false);
         return;
       }
 
+      recordSuccess(userId);
       setKey(derivedKey);
       router.replace("/dashboard");
     } catch (err) {
@@ -111,12 +150,21 @@ export default function UnlockPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoFocus
+                disabled={lockedSeconds > 0}
               />
 
               {error && <Alert variant="error">{error}</Alert>}
 
-              <Button type="submit" disabled={submitting} className="w-full">
-                {submitting ? "Unlocking…" : "Unlock"}
+              <Button
+                type="submit"
+                disabled={submitting || lockedSeconds > 0}
+                className="w-full"
+              >
+                {lockedSeconds > 0
+                  ? `Locked — try again in ${lockedSeconds}s`
+                  : submitting
+                    ? "Unlocking…"
+                    : "Unlock"}
               </Button>
             </form>
           </CardBody>

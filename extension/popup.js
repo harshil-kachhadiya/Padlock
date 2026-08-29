@@ -148,6 +148,7 @@ async function boot() {
 
     const passwordInput = app.querySelector("#unlock-password");
     const capsLockWarning = app.querySelector("#unlock-capslock");
+    const unlockBtn = app.querySelector('[data-action="unlock"]');
 
     function updateCapsLockWarning(e) {
       capsLockWarning.hidden = !e.getModifierState?.("CapsLock");
@@ -158,6 +159,11 @@ async function boot() {
       if (e.key === "Enter") handleUnlock(session, userRow);
     });
     passwordInput.addEventListener("keyup", updateCapsLockWarning);
+
+    const lockout = await loadLockoutState(session.user.id);
+    if (isLockedOut(lockout)) {
+      applyLockoutCountdown(secondsUntilUnlocked(lockout), passwordInput, unlockBtn);
+    }
 
     return;
   }
@@ -179,11 +185,36 @@ async function handleSignOut() {
   await boot();
 }
 
+function applyLockoutCountdown(seconds, passwordInput, unlockBtn) {
+  let remaining = seconds;
+  passwordInput.disabled = true;
+  unlockBtn.disabled = true;
+  unlockBtn.textContent = `Locked — ${remaining}s`;
+
+  const interval = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) {
+      clearInterval(interval);
+      passwordInput.disabled = false;
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = "Unlock";
+      return;
+    }
+    unlockBtn.textContent = `Locked — ${remaining}s`;
+  }, 1000);
+}
+
 async function handleUnlock(session, userRow) {
   const passwordInput = app.querySelector("#unlock-password");
   const errorEl = app.querySelector("#unlock-error");
   const unlockBtn = app.querySelector('[data-action="unlock"]');
   const password = passwordInput.value;
+
+  const existingLockout = await loadLockoutState(session.user.id);
+  if (isLockedOut(existingLockout)) {
+    applyLockoutCountdown(secondsUntilUnlocked(existingLockout), passwordInput, unlockBtn);
+    return;
+  }
 
   errorEl.hidden = true;
   unlockBtn.disabled = true;
@@ -194,13 +225,23 @@ async function handleUnlock(session, userRow) {
     const valid = await checkVerifier(key, userRow.verifier);
 
     if (!valid) {
-      errorEl.textContent = "Incorrect master password.";
-      errorEl.hidden = false;
-      unlockBtn.disabled = false;
-      unlockBtn.textContent = "Unlock";
+      const state = await recordFailedAttempt(session.user.id);
+
+      if (isLockedOut(state)) {
+        errorEl.textContent = `Too many incorrect attempts. Try again in ${secondsUntilUnlocked(state)}s.`;
+        errorEl.hidden = false;
+        applyLockoutCountdown(secondsUntilUnlocked(state), passwordInput, unlockBtn);
+      } else {
+        const remaining = lockoutAttemptsRemaining(state);
+        errorEl.textContent = `Incorrect master password. ${remaining} attempt${remaining === 1 ? "" : "s"} left before a temporary lockout.`;
+        errorEl.hidden = false;
+        unlockBtn.disabled = false;
+        unlockBtn.textContent = "Unlock";
+      }
       return;
     }
 
+    await recordUnlockSuccess(session.user.id);
     await storeVaultKey(key);
     await showVault(session, key);
   } catch (err) {

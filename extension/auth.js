@@ -133,3 +133,52 @@ async function loadDraft(formKey) {
 async function clearDraft() {
   await chrome.storage.session.remove(PADLOCK_DRAFT_KEY);
 }
+
+// --- Unlock lockout ---------------------------------------------------
+// Soft rate-limit against repeated failed unlock attempts, mirroring the
+// website's version. Uses chrome.storage.local (not .session) so it
+// survives browser restarts, not just the current browser session.
+
+const LOCKOUT_MAX_ATTEMPTS = 5;
+const LOCKOUT_BASE_MS = 30_000;
+
+function lockoutKey(userId) {
+  return `padlock_lockout_${userId}`;
+}
+
+async function loadLockoutState(userId) {
+  const stored = await chrome.storage.local.get(lockoutKey(userId));
+  return stored[lockoutKey(userId)] || { attempts: 0, lockedUntil: 0, lockoutTier: 0 };
+}
+
+async function recordFailedAttempt(userId) {
+  const state = await loadLockoutState(userId);
+  state.attempts += 1;
+
+  if (state.attempts >= LOCKOUT_MAX_ATTEMPTS) {
+    state.lockoutTier += 1;
+    state.lockedUntil = Date.now() + LOCKOUT_BASE_MS * 2 ** (state.lockoutTier - 1);
+    state.attempts = 0;
+  }
+
+  await chrome.storage.local.set({ [lockoutKey(userId)]: state });
+  return state;
+}
+
+async function recordUnlockSuccess(userId) {
+  await chrome.storage.local.set({
+    [lockoutKey(userId)]: { attempts: 0, lockedUntil: 0, lockoutTier: 0 },
+  });
+}
+
+function lockoutAttemptsRemaining(state) {
+  return Math.max(LOCKOUT_MAX_ATTEMPTS - state.attempts, 0);
+}
+
+function isLockedOut(state) {
+  return Date.now() < state.lockedUntil;
+}
+
+function secondsUntilUnlocked(state) {
+  return Math.max(Math.ceil((state.lockedUntil - Date.now()) / 1000), 0);
+}
