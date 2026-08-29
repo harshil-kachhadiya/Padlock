@@ -10,6 +10,34 @@ function on(action, handler) {
   if (el) el.addEventListener("click", handler);
 }
 
+function renderLoading(message = "Loading…") {
+  render("tpl-loading");
+  const msgEl = app.querySelector("#loading-message");
+  if (msgEl) msgEl.textContent = message;
+}
+
+let toastTimeout;
+let toastHideTimeout;
+
+function showToast(message, variant = "info") {
+  const toast = document.getElementById("toast");
+  clearTimeout(toastTimeout);
+  clearTimeout(toastHideTimeout);
+
+  toast.hidden = false;
+  toast.textContent = message;
+  toast.className = `toast${variant !== "info" ? ` toast-${variant}` : ""}`;
+
+  requestAnimationFrame(() => toast.classList.add("show"));
+
+  toastTimeout = setTimeout(() => {
+    toast.classList.remove("show");
+    toastHideTimeout = setTimeout(() => {
+      toast.hidden = true;
+    }, 200);
+  }, 2200);
+}
+
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab ?? null;
@@ -54,6 +82,7 @@ function hostsMatch(a, b) {
 }
 
 async function boot() {
+  renderLoading("Checking session…");
   const session = await getSession();
 
   if (!session) {
@@ -62,6 +91,7 @@ async function boot() {
     return;
   }
 
+  renderLoading("Loading your account…");
   const userRow = await fetchUserRow(session.access_token, session.user.id);
 
   if (!userRow) {
@@ -114,9 +144,12 @@ async function handleSignOut() {
 async function handleUnlock(session, userRow) {
   const passwordInput = app.querySelector("#unlock-password");
   const errorEl = app.querySelector("#unlock-error");
+  const unlockBtn = app.querySelector('[data-action="unlock"]');
   const password = passwordInput.value;
 
   errorEl.hidden = true;
+  unlockBtn.disabled = true;
+  unlockBtn.textContent = "Unlocking…";
 
   try {
     const key = await deriveKey(password, userRow.salt);
@@ -125,6 +158,8 @@ async function handleUnlock(session, userRow) {
     if (!valid) {
       errorEl.textContent = "Incorrect master password.";
       errorEl.hidden = false;
+      unlockBtn.disabled = false;
+      unlockBtn.textContent = "Unlock";
       return;
     }
 
@@ -133,6 +168,8 @@ async function handleUnlock(session, userRow) {
   } catch (err) {
     errorEl.textContent = err.message;
     errorEl.hidden = false;
+    unlockBtn.disabled = false;
+    unlockBtn.textContent = "Unlock";
   }
 }
 
@@ -157,8 +194,18 @@ function buildEntryNode(site, activePassword, session, key, onChanged) {
         password: plaintext,
       });
 
-      button.textContent = response?.ok ? "Filled" : "No form found";
+      if (response?.ok) {
+        const parts = [];
+        if (response.filledUsername) parts.push("username");
+        if (response.filledPassword) parts.push("password");
+        showToast(`Filled ${parts.join(" & ")} for ${site.site_name}`, "success");
+        button.textContent = "Filled";
+      } else {
+        showToast(`No login form found on this page for ${site.site_name}`, "error");
+        button.textContent = "No form found";
+      }
     } catch {
+      showToast("Autofill failed — try reloading this tab", "error");
       button.textContent = "Failed";
     } finally {
       setTimeout(() => {
@@ -206,11 +253,17 @@ async function showVault(session, key) {
   const matchEmpty = app.querySelector("#match-empty");
   const matchLabel = app.querySelector("#match-label");
   const allSection = app.querySelector("#all-section");
+  const vaultLoading = app.querySelector("#vault-loading");
+
+  matchLabel.hidden = true;
+  matchEmpty.hidden = true;
+  allSection.hidden = true;
 
   const activeUrl = await getActiveTabUrl();
   const activeHost = hostnameOf(activeUrl);
 
   const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
+  vaultLoading.hidden = true;
 
   const entries = allSites
     .map((site) => {
@@ -234,6 +287,7 @@ async function showVault(session, key) {
   if (!activeHost) {
     matchLabel.hidden = true;
     matchEmpty.hidden = true;
+    allSection.hidden = false;
     allSection.open = true;
     allSection.querySelector(".section-summary").textContent = "All items";
     for (const { site, activePassword } of entries) {
@@ -247,6 +301,8 @@ async function showVault(session, key) {
   );
   const rest = entries.filter((entry) => !matching.includes(entry));
 
+  matchLabel.hidden = false;
+  allSection.hidden = false;
   matchLabel.textContent = `This site (${activeHost})`;
 
   if (matching.length === 0) {

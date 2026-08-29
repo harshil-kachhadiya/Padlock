@@ -15,8 +15,20 @@
     </header>
 
     <main id="app" class="app">
-      <p class="muted">Loading&hellip;</p>
+      <div class="loading-state">
+        <span class="spinner"></span>
+        <p class="muted">Loading&hellip;</p>
+      </div>
     </main>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <template id="tpl-loading">
+      <div class="loading-state">
+        <span class="spinner"></span>
+        <p class="muted" id="loading-message">Loading&hellip;</p>
+      </div>
+    </template>
 
     <template id="tpl-signin">
       <div class="panel">
@@ -57,6 +69,11 @@
           </div>
         </div>
         <button class="btn btn-secondary" data-action="add-entry">+ Add entry</button>
+
+        <div class="loading-state loading-state-sm" id="vault-loading">
+          <span class="spinner spinner-sm"></span>
+          <p class="muted">Loading entries&hellip;</p>
+        </div>
 
         <p class="section-label" id="match-label">This site</p>
         <p class="muted" id="match-empty" hidden>No saved entries for this site.</p>
