@@ -99,7 +99,7 @@ export default function SetupPage() {
       }
 
       setKey(derivedKey);
-      router.replace("/dashboard");
+      router.replace("/welcome");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
       setSubmitting(false);

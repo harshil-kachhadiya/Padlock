@@ -316,8 +316,16 @@ chrome.storage.onChanged.addListener((_changes, areaName) => {
   if (areaName === "session") rebuildMenuForActiveTab();
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   console.log("Padlock extension installed.");
   rebuildMenuForActiveTab();
+
+  chrome.runtime.setUninstallURL(`${PADLOCK_CONFIG.WEBSITE_URL}/extension/goodbye`);
+
+  if (details.reason === "install") {
+    // New install: the vault may not exist yet, so send them to the landing
+    // page (sign in → set up) rather than /welcome, which assumes it does.
+    chrome.tabs.create({ url: `${PADLOCK_CONFIG.WEBSITE_URL}/` });
+  }
 });
 chrome.runtime.onStartup.addListener(rebuildMenuForActiveTab);

@@ -160,7 +160,7 @@ function showSavePromptBanner(capture, isUpdate) {
       </div>
       <p class="desc">${
         isUpdate ? "Update the saved password for" : "Save this password for"
-      } <strong>${capture.username || "this account"}</strong> on ${capture.host}?</p>
+      } <strong>${escapeHtml(capture.username || "this account")}</strong> on ${escapeHtml(capture.host)}?</p>
       <div class="actions">
         <button class="save" data-action="save">${isUpdate ? "Update" : "Save"}</button>
         <button class="never" data-action="never">Never for this site</button>
