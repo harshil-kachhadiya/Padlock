@@ -27,6 +27,7 @@ export default function EditEntryPage() {
   const [siteUrl, setSiteUrl] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [originalPassword, setOriginalPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -72,6 +73,7 @@ export default function EditEntryPage() {
       if (activePassword) {
         const plaintext = await decryptEntry(key!, activePassword.encrypted_password);
         setPassword(plaintext);
+        setOriginalPassword(plaintext);
       }
 
       setLoading(false);
@@ -105,7 +107,8 @@ export default function EditEntryPage() {
         return;
       }
 
-      const encryptedPassword = await encryptEntry(key, password);
+      const passwordChanged = password !== originalPassword;
+      const encryptedPassword = passwordChanged ? await encryptEntry(key, password) : undefined;
 
       const response = await fetch(`/api/entries/${siteId}`, {
         method: "PATCH",

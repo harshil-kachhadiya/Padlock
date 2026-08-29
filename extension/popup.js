@@ -474,13 +474,15 @@ async function showEntryForm(session, key, existing) {
   const genBtn = app.querySelector("#gen-generate-btn");
 
   const formKey = existing ? `edit:${existing.site.id}` : "add";
+  let originalPassword = null;
 
   if (existing) {
     app.querySelector("#entry-form-title").textContent = "Edit entry";
     nameInput.value = existing.site.site_name;
     urlInput.value = existing.site.site_url;
     usernameInput.value = existing.site.username || "";
-    passwordInput.value = await decryptEntry(key, existing.activePassword.encrypted_password);
+    originalPassword = await decryptEntry(key, existing.activePassword.encrypted_password);
+    passwordInput.value = originalPassword;
   } else {
     const tab = await getActiveTab();
     const host = hostnameOf(tab?.url ?? "");
@@ -603,12 +605,14 @@ async function showEntryForm(session, key, existing) {
     }
 
     try {
-      const encryptedPassword = await encryptEntry(key, password);
-
       if (existing) {
         await updateSite(session.access_token, existing.site.id, { siteName, siteUrl, username });
-        await updatePassword(session.access_token, existing.activePassword.id, encryptedPassword);
+        if (password !== originalPassword) {
+          const encryptedPassword = await encryptEntry(key, password);
+          await updatePassword(session.access_token, existing.activePassword.id, encryptedPassword);
+        }
       } else {
+        const encryptedPassword = await encryptEntry(key, password);
         const newSite = await createSite(session.access_token, session.user.id, {
           siteName,
           siteUrl,

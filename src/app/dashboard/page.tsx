@@ -153,6 +153,9 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => router.push("/dashboard/health")}>
+              Vault health
+            </Button>
             <Button variant="secondary" onClick={() => router.push("/dashboard/export")}>
               Export
             </Button>

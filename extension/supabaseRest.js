@@ -72,7 +72,10 @@ async function updatePassword(accessToken, passwordId, encryptedPassword) {
   const res = await fetch(`${PADLOCK_CONFIG.SUPABASE_URL}/rest/v1/passwords?id=eq.${passwordId}`, {
     method: "PATCH",
     headers: restHeaders(accessToken),
-    body: JSON.stringify({ encrypted_password: encryptedPassword }),
+    body: JSON.stringify({
+      encrypted_password: encryptedPassword,
+      updated_at: new Date().toISOString(),
+    }),
   });
 
   if (!res.ok) throw new Error("Failed to update password.");

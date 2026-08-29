@@ -65,7 +65,7 @@ export async function PATCH(
     if (activePassword) {
       const { error: passwordUpdateError } = await supabase
         .from("passwords")
-        .update({ encrypted_password: encryptedPassword })
+        .update({ encrypted_password: encryptedPassword, updated_at: new Date().toISOString() })
         .eq("id", activePassword.id);
 
       if (passwordUpdateError) {
