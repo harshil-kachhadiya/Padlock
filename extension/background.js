@@ -5,6 +5,14 @@ importScripts("config.js", "domainMatch.js", "crypto.js", "auth.js", "supabaseRe
 
 const MENU_ROOT_ID = "padlock-root";
 
+// chrome.contextMenus.create() takes an optional callback specifically so you
+// can drain chrome.runtime.lastError — without reading it, a failed create
+// (e.g. a duplicate id) surfaces as an "Unchecked runtime.lastError" in the
+// extension's error log instead of being handled.
+function safeCreateMenu(props) {
+  chrome.contextMenus.create(props, () => void chrome.runtime.lastError);
+}
+
 function activeEntriesForHost(allSites, activeHost) {
   return allSites
     .map((site) => {
@@ -17,12 +25,12 @@ function activeEntriesForHost(allSites, activeHost) {
     .filter(({ site }) => hostsMatch(activeHost, hostnameOf(`https://${site.site_url}`)));
 }
 
-async function rebuildMenuForTab(tab) {
+async function doRebuildMenuForTab(tab) {
   await chrome.contextMenus.removeAll();
 
   if (!tab?.url || !/^https?:/.test(tab.url)) return;
 
-  chrome.contextMenus.create({
+  safeCreateMenu({
     id: MENU_ROOT_ID,
     title: "Fill with Padlock",
     contexts: ["editable"],
@@ -31,7 +39,7 @@ async function rebuildMenuForTab(tab) {
   try {
     const session = await getSession();
     if (!session) {
-      chrome.contextMenus.create({
+      safeCreateMenu({
         id: "padlock-signin-needed",
         parentId: MENU_ROOT_ID,
         title: "Sign in from the Padlock popup",
@@ -43,7 +51,7 @@ async function rebuildMenuForTab(tab) {
 
     const vaultKey = await loadVaultKey();
     if (!vaultKey) {
-      chrome.contextMenus.create({
+      safeCreateMenu({
         id: "padlock-locked",
         parentId: MENU_ROOT_ID,
         title: "Vault locked — unlock from the popup",
@@ -58,7 +66,7 @@ async function rebuildMenuForTab(tab) {
     const entries = activeEntriesForHost(allSites, activeHost);
 
     if (entries.length === 0) {
-      chrome.contextMenus.create({
+      safeCreateMenu({
         id: "padlock-none",
         parentId: MENU_ROOT_ID,
         title: "No saved entries for this site",
@@ -69,7 +77,7 @@ async function rebuildMenuForTab(tab) {
     }
 
     for (const { site } of entries) {
-      chrome.contextMenus.create({
+      safeCreateMenu({
         id: `padlock-fill-${site.id}`,
         parentId: MENU_ROOT_ID,
         title: site.username ? `${site.site_name} (${site.username})` : site.site_name,
@@ -77,7 +85,7 @@ async function rebuildMenuForTab(tab) {
       });
     }
   } catch {
-    chrome.contextMenus.create({
+    safeCreateMenu({
       id: "padlock-error",
       parentId: MENU_ROOT_ID,
       title: "Couldn't load entries — try the popup",
@@ -85,6 +93,18 @@ async function rebuildMenuForTab(tab) {
       enabled: false,
     });
   }
+}
+
+// Several independent triggers (tab activation, tab update, storage changes)
+// can each call this around the same time. chrome.contextMenus.removeAll()
+// is async, so two overlapping calls could both pass the removeAll and then
+// both try to create the same menu ids — "duplicate id" errors. Serialize
+// every rebuild through one promise chain so only one runs at a time.
+let menuRebuildChain = Promise.resolve();
+
+function rebuildMenuForTab(tab) {
+  menuRebuildChain = menuRebuildChain.then(() => doRebuildMenuForTab(tab)).catch(() => {});
+  return menuRebuildChain;
 }
 
 async function rebuildMenuForActiveTab() {
