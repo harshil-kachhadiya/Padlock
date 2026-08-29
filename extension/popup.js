@@ -254,6 +254,47 @@ async function showVault(session, key) {
   }
 }
 
+function generatePassword({ length, upper, numbers, symbols }) {
+  const lower = "abcdefghijklmnopqrstuvwxyz";
+  const upperChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const numberChars = "0123456789";
+  const symbolChars = "!@#$%^&*()-_=+[]{}";
+
+  let charset = lower;
+  if (upper) charset += upperChars;
+  if (numbers) charset += numberChars;
+  if (symbols) charset += symbolChars;
+
+  const randomValues = crypto.getRandomValues(new Uint32Array(length));
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += charset[randomValues[i] % charset.length];
+  }
+  return result;
+}
+
+function estimatePasswordStrength(password) {
+  if (!password) return { score: 0, label: "" };
+  if (password.length < 8) return { score: 0.15, label: "Weak" };
+
+  let variety = 0;
+  if (/[a-z]/.test(password)) variety++;
+  if (/[A-Z]/.test(password)) variety++;
+  if (/[0-9]/.test(password)) variety++;
+  if (/[^a-zA-Z0-9]/.test(password)) variety++;
+
+  const lengthScore = Math.min(password.length / 20, 1);
+  const varietyScore = variety / 4;
+  const score = lengthScore * 0.6 + varietyScore * 0.4;
+
+  if (score < 0.45) return { score, label: "Weak" };
+  if (score < 0.7) return { score, label: "Fair" };
+  if (score < 0.85) return { score, label: "Good" };
+  return { score, label: "Strong" };
+}
+
+const STRENGTH_COLORS = { Weak: "#b91c1c", Fair: "#e8a723", Good: "#146c2e", Strong: "#146c2e" };
+
 async function showEntryForm(session, key, existing) {
   render("tpl-entry-form");
 
@@ -262,6 +303,17 @@ async function showEntryForm(session, key, existing) {
   const usernameInput = app.querySelector("#form-username");
   const passwordInput = app.querySelector("#form-password");
   const errorEl = app.querySelector("#entry-form-error");
+
+  const toggleVisibilityBtn = app.querySelector("#toggle-password-visibility");
+  const strengthMeter = app.querySelector("#strength-meter");
+  const strengthFill = app.querySelector("#strength-fill");
+  const strengthLabel = app.querySelector("#strength-label");
+  const genLengthInput = app.querySelector("#gen-length");
+  const genLengthValue = app.querySelector("#gen-length-value");
+  const genUpper = app.querySelector("#gen-upper");
+  const genNumbers = app.querySelector("#gen-numbers");
+  const genSymbols = app.querySelector("#gen-symbols");
+  const genBtn = app.querySelector("#gen-generate-btn");
 
   if (existing) {
     app.querySelector("#entry-form-title").textContent = "Edit entry";
@@ -298,6 +350,50 @@ async function showEntryForm(session, key, existing) {
       passwordInput.focus();
     }
   }
+
+  function updateStrengthMeter() {
+    const { score, label } = estimatePasswordStrength(passwordInput.value);
+
+    if (!passwordInput.value) {
+      strengthMeter.hidden = true;
+      return;
+    }
+
+    strengthMeter.hidden = false;
+    strengthFill.style.width = `${Math.max(Math.round(score * 100), 8)}%`;
+    strengthFill.style.background = STRENGTH_COLORS[label];
+    strengthLabel.textContent = label;
+    strengthLabel.style.color = STRENGTH_COLORS[label];
+  }
+
+  function setPasswordVisible(visible) {
+    passwordInput.type = visible ? "text" : "password";
+    toggleVisibilityBtn.textContent = visible ? "🙈" : "👁";
+    toggleVisibilityBtn.title = visible ? "Hide password" : "Show password";
+    toggleVisibilityBtn.classList.toggle("active", visible);
+  }
+
+  passwordInput.addEventListener("input", updateStrengthMeter);
+  updateStrengthMeter();
+
+  toggleVisibilityBtn.addEventListener("click", () => {
+    setPasswordVisible(passwordInput.type === "password");
+  });
+
+  genLengthInput.addEventListener("input", () => {
+    genLengthValue.textContent = genLengthInput.value;
+  });
+
+  genBtn.addEventListener("click", () => {
+    passwordInput.value = generatePassword({
+      length: Number(genLengthInput.value),
+      upper: genUpper.checked,
+      numbers: genNumbers.checked,
+      symbols: genSymbols.checked,
+    });
+    setPasswordVisible(true);
+    updateStrengthMeter();
+  });
 
   on("cancel-entry", () => showVault(session, key));
 

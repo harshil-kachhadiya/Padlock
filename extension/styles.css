@@ -87,6 +87,108 @@ body {
   margin-top: 8px;
 }
 
+.password-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.input-inline {
+  margin-top: 0;
+  flex: 1;
+}
+
+.icon-btn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.icon-btn.active {
+  background: var(--navy-900);
+  border-color: var(--navy-900);
+}
+
+.strength-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.strength-track {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.strength-track span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  background: var(--red);
+  transition: width 0.15s ease, background-color 0.15s ease;
+}
+
+.strength-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.gen-section {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 8px 10px;
+}
+
+.gen-section .section-summary {
+  color: var(--navy-800);
+}
+
+.gen-panel {
+  margin-top: 10px;
+}
+
+.gen-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.gen-row input[type="range"] {
+  flex: 1;
+}
+
+.gen-length-value {
+  min-width: 20px;
+  text-align: right;
+  font-weight: 600;
+}
+
+.gen-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

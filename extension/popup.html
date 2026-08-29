@@ -88,7 +88,40 @@
         <input type="text" id="form-site-name" class="input" placeholder="Site name (e.g. Gmail)" />
         <input type="text" id="form-site-url" class="input" placeholder="Site URL (e.g. gmail.com)" />
         <input type="text" id="form-username" class="input" placeholder="Username" />
-        <input type="password" id="form-password" class="input" placeholder="Password" />
+
+        <div class="password-row">
+          <input type="password" id="form-password" class="input input-inline" placeholder="Password" />
+          <button type="button" class="icon-btn" id="toggle-password-visibility" aria-label="Show password" title="Show password">👁</button>
+        </div>
+
+        <div class="strength-meter" id="strength-meter" hidden>
+          <div class="strength-track"><span id="strength-fill"></span></div>
+          <span class="strength-label" id="strength-label"></span>
+        </div>
+
+        <details class="gen-section" id="gen-section">
+          <summary class="section-summary">Generate a strong password</summary>
+          <div class="gen-panel">
+            <div class="gen-row">
+              <label for="gen-length">Length</label>
+              <input type="range" id="gen-length" min="8" max="32" value="16" />
+              <span class="gen-length-value" id="gen-length-value">16</span>
+            </div>
+            <label class="gen-checkbox">
+              <input type="checkbox" id="gen-upper" checked /> Uppercase (A&ndash;Z)
+            </label>
+            <label class="gen-checkbox">
+              <input type="checkbox" id="gen-numbers" checked /> Numbers (0&ndash;9)
+            </label>
+            <label class="gen-checkbox">
+              <input type="checkbox" id="gen-symbols" checked /> Symbols (!@#$)
+            </label>
+            <button type="button" class="btn btn-secondary btn-sm" id="gen-generate-btn">
+              Generate password
+            </button>
+          </div>
+        </details>
+
         <p class="error" id="entry-form-error" hidden></p>
         <button class="btn btn-primary" data-action="save-entry">Save</button>
         <button class="btn btn-ghost" data-action="cancel-entry">Cancel</button>
