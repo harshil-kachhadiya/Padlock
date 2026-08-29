@@ -10,7 +10,7 @@ export default function PrivacyPage() {
       <SiteHeader />
       <PageContainer className="max-w-3xl">
         <h1 className="font-serif text-2xl font-bold text-foreground">Privacy Policy</h1>
-        <p className="mt-1 text-sm text-foreground-muted">Last updated: [DATE]</p>
+        <p className="mt-1 text-sm text-foreground-muted">Last updated: August 30, 2026</p>
 
         <Card className="mt-6">
           <CardBody className="space-y-6 text-sm leading-relaxed text-foreground">
@@ -20,7 +20,9 @@ export default function PrivacyPage() {
                 Padlock is a zero-knowledge password manager. Your master password is created and
                 verified entirely in your browser or extension — it is never transmitted to us,
                 and we have no way to recover it. Every saved password and note is encrypted on
-                your device before it is sent to our database; we only ever store ciphertext.
+                your device before it is sent to our database.{" "}
+                <strong>We never store your passwords in plain text on our servers — only
+                ciphertext that we cannot read.</strong>
               </p>
             </section>
 
@@ -107,7 +109,7 @@ export default function PrivacyPage() {
 
             <section>
               <h2 className="mb-2 text-base font-bold">Contact</h2>
-              <p>Questions about this policy: [YOUR SUPPORT EMAIL]</p>
+              <p>Questions about this policy: harshil23kachhadiya@gmail.com</p>
             </section>
           </CardBody>
         </Card>

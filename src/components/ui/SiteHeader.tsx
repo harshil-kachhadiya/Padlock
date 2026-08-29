@@ -23,7 +23,7 @@ export function SiteHeader({ userEmail, onSignOut }: SiteHeaderProps) {
             onClick={() => router.push("/")}
             className="flex items-center gap-3 text-left"
           >
-            <span className="flex h-12 w-12 items-center justify-center rounded-sm border-2 border-gold-500 p-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-sm border-2 border-gold-500 p-1">
               <svg viewBox="0 0 512 512" className="h-full w-full" aria-hidden="true">
                 <path
                   d="M184 232 V182 a72 72 0 0 1 144 0 V232"

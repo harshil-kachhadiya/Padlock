@@ -10,7 +10,7 @@ export default function TermsPage() {
       <SiteHeader />
       <PageContainer className="max-w-3xl">
         <h1 className="font-serif text-2xl font-bold text-foreground">Terms of Service</h1>
-        <p className="mt-1 text-sm text-foreground-muted">Last updated: [DATE]</p>
+        <p className="mt-1 text-sm text-foreground-muted">Last updated: August 30, 2026</p>
 
         <Card className="mt-6">
           <CardBody className="space-y-6 text-sm leading-relaxed text-foreground">
@@ -60,7 +60,7 @@ export default function TermsPage() {
 
             <section>
               <h2 className="mb-2 text-base font-bold">Contact</h2>
-              <p>Questions: [YOUR SUPPORT EMAIL]</p>
+              <p>Questions: harshil23kachhadiya@gmail.com</p>
             </section>
           </CardBody>
         </Card>
