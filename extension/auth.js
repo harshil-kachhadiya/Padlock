@@ -2,6 +2,7 @@
 
 const PADLOCK_SESSION_KEY = "padlock_session"; // { access_token, refresh_token, expires_at, user }
 const PADLOCK_VAULT_KEY = "padlock_vault_key"; // { rawKey: number[], unlockedAt: number }
+const PADLOCK_DRAFT_KEY = "padlock_draft"; // { formKey, siteName, siteUrl, username, password, savedAt }
 
 async function signInWithGoogle() {
   const redirectUrl = chrome.identity.getRedirectURL();
@@ -112,4 +113,23 @@ async function loadVaultKey() {
 
 async function clearVaultKey() {
   await chrome.storage.session.remove(PADLOCK_VAULT_KEY);
+}
+
+// Draft recovery for the Add/Edit form — kept only in memory (chrome.storage.session),
+// same tier of protection as the cached vault key, never written to disk.
+async function saveDraft(formKey, fields) {
+  await chrome.storage.session.set({
+    [PADLOCK_DRAFT_KEY]: { formKey, ...fields, savedAt: Date.now() },
+  });
+}
+
+async function loadDraft(formKey) {
+  const stored = await chrome.storage.session.get(PADLOCK_DRAFT_KEY);
+  const draft = stored[PADLOCK_DRAFT_KEY];
+  if (!draft || draft.formKey !== formKey) return null;
+  return draft;
+}
+
+async function clearDraft() {
+  await chrome.storage.session.remove(PADLOCK_DRAFT_KEY);
 }

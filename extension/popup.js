@@ -19,23 +19,45 @@ function renderLoading(message = "Loading…") {
 let toastTimeout;
 let toastHideTimeout;
 
-function showToast(message, variant = "info") {
+function showToast(message, variant = "info", action = null) {
   const toast = document.getElementById("toast");
   clearTimeout(toastTimeout);
   clearTimeout(toastHideTimeout);
 
   toast.hidden = false;
-  toast.textContent = message;
   toast.className = `toast${variant !== "info" ? ` toast-${variant}` : ""}`;
+  toast.replaceChildren();
+
+  const messageEl = document.createElement("span");
+  messageEl.textContent = message;
+  toast.appendChild(messageEl);
+
+  if (action) {
+    const actionBtn = document.createElement("button");
+    actionBtn.type = "button";
+    actionBtn.className = "toast-action";
+    actionBtn.textContent = action.label;
+    actionBtn.addEventListener("click", () => {
+      clearTimeout(toastTimeout);
+      clearTimeout(toastHideTimeout);
+      toast.classList.remove("show");
+      toastHideTimeout = setTimeout(() => {
+        toast.hidden = true;
+      }, 200);
+      action.onClick();
+    });
+    toast.appendChild(actionBtn);
+  }
 
   requestAnimationFrame(() => toast.classList.add("show"));
 
+  const duration = action ? 5000 : 2200;
   toastTimeout = setTimeout(() => {
     toast.classList.remove("show");
     toastHideTimeout = setTimeout(() => {
       toast.hidden = true;
     }, 200);
-  }, 2200);
+  }, duration);
 }
 
 async function getActiveTab() {
@@ -219,20 +241,48 @@ function buildEntryNode(site, activePassword, session, key, onChanged) {
     showEntryForm(session, key, { site, activePassword });
   });
 
-  node.querySelector('[data-action="delete"]').addEventListener("click", async (e) => {
-    if (!confirm(`Delete "${site.site_name}"? This cannot be undone from the extension.`)) return;
+  const actionsEl = node.querySelector(".entry-actions");
+  const confirmEl = node.querySelector(".entry-confirm");
 
+  node.querySelector('[data-action="delete"]').addEventListener("click", () => {
+    actionsEl.hidden = true;
+    confirmEl.hidden = false;
+  });
+
+  node.querySelector('[data-action="cancel-delete"]').addEventListener("click", () => {
+    confirmEl.hidden = true;
+    actionsEl.hidden = false;
+  });
+
+  node.querySelector('[data-action="confirm-delete"]').addEventListener("click", async (e) => {
     const button = e.currentTarget;
     button.disabled = true;
     button.textContent = "Deleting…";
 
     try {
       await softDeleteSite(session.access_token, site.id);
+
+      showToast(`Deleted "${site.site_name}"`, "info", {
+        label: "Undo",
+        onClick: async () => {
+          try {
+            await undoDeleteSite(session.access_token, site.id);
+            showToast(`Restored "${site.site_name}"`, "success");
+          } catch (err) {
+            showToast(err.message, "error");
+          } finally {
+            await onChanged();
+          }
+        },
+      });
+
       await onChanged();
     } catch (err) {
-      alert(err.message);
+      showToast(err.message, "error");
       button.disabled = false;
       button.textContent = "Delete";
+      confirmEl.hidden = true;
+      actionsEl.hidden = false;
     }
   });
 
@@ -382,6 +432,8 @@ async function showEntryForm(session, key, existing) {
   const genSymbols = app.querySelector("#gen-symbols");
   const genBtn = app.querySelector("#gen-generate-btn");
 
+  const formKey = existing ? `edit:${existing.site.id}` : "add";
+
   if (existing) {
     app.querySelector("#entry-form-title").textContent = "Edit entry";
     nameInput.value = existing.site.site_name;
@@ -410,13 +462,41 @@ async function showEntryForm(session, key, existing) {
         // Content script not injected on this tab (e.g. opened before install) — ignore.
       }
     }
+  }
 
+  const draft = await loadDraft(formKey);
+  if (draft) {
+    nameInput.value = draft.siteName ?? nameInput.value;
+    urlInput.value = draft.siteUrl ?? urlInput.value;
+    usernameInput.value = draft.username ?? usernameInput.value;
+    passwordInput.value = draft.password ?? passwordInput.value;
+    showToast("Restored your unsaved changes", "info");
+  }
+
+  if (!existing) {
     if (passwordInput.value) {
       nameInput.focus();
     } else {
       passwordInput.focus();
     }
   }
+
+  let draftTimeout;
+  function scheduleDraftSave() {
+    clearTimeout(draftTimeout);
+    draftTimeout = setTimeout(() => {
+      saveDraft(formKey, {
+        siteName: nameInput.value,
+        siteUrl: urlInput.value,
+        username: usernameInput.value,
+        password: passwordInput.value,
+      });
+    }, 400);
+  }
+
+  [nameInput, urlInput, usernameInput, passwordInput].forEach((input) =>
+    input.addEventListener("input", scheduleDraftSave)
+  );
 
   function updateStrengthMeter() {
     const { score, label } = estimatePasswordStrength(passwordInput.value);
@@ -462,7 +542,10 @@ async function showEntryForm(session, key, existing) {
     updateStrengthMeter();
   });
 
-  on("cancel-entry", () => showVault(session, key));
+  on("cancel-entry", async () => {
+    await clearDraft();
+    showVault(session, key);
+  });
 
   on("save-entry", async () => {
     errorEl.hidden = true;
@@ -493,6 +576,8 @@ async function showEntryForm(session, key, existing) {
         await createPassword(session.access_token, session.user.id, newSite.id, encryptedPassword);
       }
 
+      await clearDraft();
+      showToast(existing ? "Entry updated" : "Entry saved", "success");
       await showVault(session, key);
     } catch (err) {
       errorEl.textContent = err.message;

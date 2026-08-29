@@ -98,3 +98,24 @@ async function softDeleteSite(accessToken, siteId) {
 
   if (!passwordRes.ok) throw new Error("Failed to delete password.");
 }
+
+async function undoDeleteSite(accessToken, siteId) {
+  const siteRes = await fetch(`${PADLOCK_CONFIG.SUPABASE_URL}/rest/v1/sites?id=eq.${siteId}`, {
+    method: "PATCH",
+    headers: restHeaders(accessToken),
+    body: JSON.stringify({ deleted: false }),
+  });
+
+  if (!siteRes.ok) throw new Error("Failed to restore site.");
+
+  const passwordRes = await fetch(
+    `${PADLOCK_CONFIG.SUPABASE_URL}/rest/v1/passwords?site_id=eq.${siteId}`,
+    {
+      method: "PATCH",
+      headers: restHeaders(accessToken),
+      body: JSON.stringify({ deleted: false }),
+    }
+  );
+
+  if (!passwordRes.ok) throw new Error("Failed to restore password.");
+}
