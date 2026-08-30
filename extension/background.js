@@ -108,8 +108,15 @@ function rebuildMenuForTab(tab) {
 }
 
 async function rebuildMenuForActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab) rebuildMenuForTab(tab);
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab) rebuildMenuForTab(tab);
+  } catch {
+    // The extension was reloaded/updated and this listener belongs to the
+    // now-dead service worker instance — any chrome.* call here throws
+    // "Extension context invalidated". Nothing to do but let it end quietly;
+    // the new instance's own listeners will run instead.
+  }
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
