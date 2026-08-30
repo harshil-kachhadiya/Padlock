@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { encryptEntry } from "@/lib/crypto";
 import { isValidBase32Secret } from "@/lib/totp";
 import { useKey } from "@/lib/keyContext";
+import { useSettings } from "@/lib/settingsContext";
 import {
   Alert,
   Button,
@@ -20,6 +21,7 @@ import {
 export default function AddEntryPage() {
   const router = useRouter();
   const { key } = useKey();
+  const { settings } = useSettings();
 
   const [siteName, setSiteName] = useState("");
   const [siteUrl, setSiteUrl] = useState("");
@@ -138,6 +140,7 @@ export default function AddEntryPage() {
                 label="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                revealDisabled={settings.never_show_passwords}
               />
 
               <Input

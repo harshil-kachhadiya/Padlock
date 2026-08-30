@@ -126,7 +126,7 @@ export default function DashboardPage() {
           passwordId: activePassword.id,
           decryptedPassword: plaintext,
           totpSecret,
-          revealed: settings.reveal_password_default,
+          revealed: settings.never_show_passwords ? false : settings.reveal_password_default,
         } satisfies Entry;
       })
     );
@@ -136,6 +136,7 @@ export default function DashboardPage() {
   }
 
   function toggleReveal(siteId: string) {
+    if (settings.never_show_passwords) return;
     setEntries((prev) =>
       prev.map((e) => (e.siteId === siteId ? { ...e, revealed: !e.revealed } : e))
     );
@@ -297,12 +298,14 @@ export default function DashboardPage() {
                           <span className="font-mono text-foreground">
                             {entry.revealed ? entry.decryptedPassword : "•".repeat(10)}
                           </span>
-                          <button
-                            onClick={() => toggleReveal(entry.siteId)}
-                            className="text-xs font-semibold text-navy-800 underline decoration-dotted underline-offset-2 dark:text-gold-500"
-                          >
-                            {entry.revealed ? "Hide" : "Show"}
-                          </button>
+                          {!settings.never_show_passwords && (
+                            <button
+                              onClick={() => toggleReveal(entry.siteId)}
+                              className="text-xs font-semibold text-navy-800 underline decoration-dotted underline-offset-2 dark:text-gold-500"
+                            >
+                              {entry.revealed ? "Hide" : "Show"}
+                            </button>
+                          )}
                         </div>
                       </td>
                       <td className="px-4 py-3 align-top">

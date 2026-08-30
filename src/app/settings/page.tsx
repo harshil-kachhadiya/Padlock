@@ -358,6 +358,33 @@ export default function SettingsPage() {
           </CardBody>
         </Card>
 
+        <Card className="mt-6 border-red-600">
+          <CardHeader>
+            <h2 className="text-sm font-bold uppercase tracking-wide text-red-600">Security</h2>
+          </CardHeader>
+          <CardBody>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={settings.never_show_passwords}
+                onChange={(e) => updateSetting("never_show_passwords", e.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Never show passwords
+                </span>
+                <span className="block text-xs text-foreground-muted">
+                  Turns off every &ldquo;Show&rdquo;/reveal control for saved passwords across the
+                  website — dashboard, export, and the add/edit forms always stay masked. Your
+                  master password fields are unaffected, since you still need to check those for
+                  typos.
+                </span>
+              </span>
+            </label>
+          </CardBody>
+        </Card>
+
         <Card className="mt-6">
           <CardHeader>
             <h2 className="text-sm font-bold uppercase tracking-wide text-foreground-muted">
@@ -365,11 +392,16 @@ export default function SettingsPage() {
             </h2>
           </CardHeader>
           <CardBody className="space-y-4">
-            <label className="flex items-start gap-3">
+            <label
+              className={`flex items-start gap-3 ${
+                settings.never_show_passwords ? "opacity-50" : ""
+              }`}
+            >
               <input
                 type="checkbox"
                 className="mt-0.5"
                 checked={settings.reveal_password_default}
+                disabled={settings.never_show_passwords}
                 onChange={(e) => updateSetting("reveal_password_default", e.target.checked)}
               />
               <span>
@@ -377,7 +409,9 @@ export default function SettingsPage() {
                   Show passwords by default
                 </span>
                 <span className="block text-xs text-foreground-muted">
-                  Passwords appear in plain text on the dashboard instead of masked with dots.
+                  {settings.never_show_passwords
+                    ? 'Disabled while "Never show passwords" is on.'
+                    : "Passwords appear in plain text on the dashboard instead of masked with dots."}
                 </span>
               </span>
             </label>

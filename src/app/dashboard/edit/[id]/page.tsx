@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { decryptEntry, encryptEntry, type EncryptedPayload } from "@/lib/crypto";
 import { isValidBase32Secret } from "@/lib/totp";
 import { useKey } from "@/lib/keyContext";
+import { useSettings } from "@/lib/settingsContext";
 import {
   Alert,
   Button,
@@ -22,6 +23,7 @@ export default function EditEntryPage() {
   const params = useParams<{ id: string }>();
   const siteId = params.id;
   const { key } = useKey();
+  const { settings } = useSettings();
 
   const [loading, setLoading] = useState(true);
   const [siteName, setSiteName] = useState("");
@@ -206,6 +208,7 @@ export default function EditEntryPage() {
                 label="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                revealDisabled={settings.never_show_passwords}
               />
 
               <Input

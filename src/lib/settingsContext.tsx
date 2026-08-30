@@ -10,6 +10,7 @@ export type Settings = {
   auto_lock_ms: number;
   reveal_password_default: boolean;
   expand_all_items_default: boolean;
+  never_show_passwords: boolean;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -17,6 +18,7 @@ const DEFAULT_SETTINGS: Settings = {
   auto_lock_ms: 5 * 60 * 1000,
   reveal_password_default: false,
   expand_all_items_default: false,
+  never_show_passwords: false,
 };
 
 type SettingsContextValue = {

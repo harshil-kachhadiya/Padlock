@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { decryptEntry, type EncryptedPayload } from "@/lib/crypto";
 import { useKey } from "@/lib/keyContext";
+import { useSettings } from "@/lib/settingsContext";
 import { buildCsv } from "@/lib/csv";
 import { Alert, Button, Card, SiteHeader, PageContainer } from "@/components/ui";
 
@@ -40,6 +41,7 @@ function downloadFile(filename: string, content: string, mimeType: string) {
 export default function ExportPage() {
   const router = useRouter();
   const { key, clearKey } = useKey();
+  const { settings } = useSettings();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -165,9 +167,11 @@ export default function ExportPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => setRevealed((v) => !v)}>
-              {revealed ? "Hide passwords" : "Show passwords"}
-            </Button>
+            {!settings.never_show_passwords && (
+              <Button variant="secondary" onClick={() => setRevealed((v) => !v)}>
+                {revealed ? "Hide passwords" : "Show passwords"}
+              </Button>
+            )}
             <Button onClick={handleExportCsv}>Download CSV</Button>
             <Button variant="secondary" onClick={handleExportJson}>
               Download JSON
@@ -208,7 +212,9 @@ export default function ExportPage() {
                       <td className="px-4 py-3 text-foreground-muted">{row.siteUrl}</td>
                       <td className="px-4 py-3 text-foreground">{row.username}</td>
                       <td className="px-4 py-3 font-mono text-foreground">
-                        {revealed ? row.password : "•".repeat(10)}
+                        {revealed && !settings.never_show_passwords
+                          ? row.password
+                          : "•".repeat(10)}
                       </td>
                       <td className="px-4 py-3 text-foreground-muted">
                         {new Date(row.createdAt).toLocaleDateString()}
