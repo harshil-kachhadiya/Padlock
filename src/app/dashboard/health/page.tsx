@@ -127,7 +127,7 @@ export default function HealthPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col">
-        <SiteHeader userEmail={userEmail} onSignOut={handleSignOut} />
+        <SiteHeader />
         <PageContainer className="flex flex-1 items-center justify-center">
           <p className="text-sm text-foreground-muted">Analyzing your vault&hellip;</p>
         </PageContainer>
@@ -137,7 +137,7 @@ export default function HealthPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader userEmail={userEmail} onSignOut={handleSignOut} />
+      <SiteHeader />
 
       <PageContainer>
         <button

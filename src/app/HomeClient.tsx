@@ -4,38 +4,13 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { useKey } from "@/lib/keyContext";
-import { ButtonLink, SiteHeader } from "@/components/ui";
+import { ButtonLink } from "@/components/ui";
 
 /**
- * Only the auth-dependent chrome (header state + primary CTA) needs to be
- * client-side. All indexable copy lives in the server component so it renders
- * in the initial HTML with no dependency on client hydration.
+ * Only the primary CTA depends on auth state — the header manages its own.
+ * All indexable copy lives in the server component so it renders in the
+ * initial HTML without waiting on hydration.
  */
-export function HomeHeader() {
-  const { clearKey } = useKey();
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    clearKey();
-    setUser(null);
-  }
-
-  return (
-    <SiteHeader userEmail={user?.email} onSignOut={user ? handleSignOut : undefined} />
-  );
-}
-
 export function HomeCta() {
   const { key } = useKey();
   const [user, setUser] = useState<User | null>(null);

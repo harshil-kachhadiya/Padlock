@@ -120,7 +120,7 @@ export default function NotesPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader userEmail={userEmail} onSignOut={handleSignOut} />
+      <SiteHeader />
 
       <PageContainer>
         <button

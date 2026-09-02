@@ -4,18 +4,9 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { useKey } from "@/lib/keyContext";
-import { ButtonLink, SiteHeader } from "@/components/ui";
+import { ButtonLink } from "@/components/ui";
 
-export function FeaturesHeader() {
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-  }, []);
-
-  return <SiteHeader userEmail={user?.email} />;
-}
-
+/** Auth-dependent CTA only — the header manages its own state. */
 export function FeaturesCta() {
   const { key } = useKey();
   const [user, setUser] = useState<User | null>(null);

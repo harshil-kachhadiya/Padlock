@@ -137,7 +137,7 @@ export default function ExportPage() {
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col">
-        <SiteHeader userEmail={userEmail} onSignOut={handleSignOut} />
+        <SiteHeader />
         <PageContainer className="flex flex-1 items-center justify-center">
           <p className="text-sm text-foreground-muted">Decrypting your vault&hellip;</p>
         </PageContainer>
@@ -147,7 +147,7 @@ export default function ExportPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader userEmail={userEmail} onSignOut={handleSignOut} />
+      <SiteHeader />
       <PageContainer>
         <div className="mb-4 flex gap-4 text-xs font-semibold">
           <button onClick={() => router.push("/dashboard")} className="text-navy-700 hover:underline dark:text-gold-500">

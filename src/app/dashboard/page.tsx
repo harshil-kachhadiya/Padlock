@@ -194,7 +194,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader userEmail={userEmail} onSignOut={handleSignOut} />
+      <SiteHeader />
 
       <PageContainer>
         <div className="mb-6 flex items-center justify-between border-b border-border pb-4">

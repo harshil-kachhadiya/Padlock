@@ -74,7 +74,7 @@ export default function ProfilePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader userEmail={user?.email} onSignOut={handleSignOut} />
+      <SiteHeader />
 
       <PageContainer className="max-w-2xl">
         <h1 className="font-serif text-2xl font-bold text-foreground">Profile</h1>

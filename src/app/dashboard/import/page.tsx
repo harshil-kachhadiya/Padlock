@@ -186,7 +186,7 @@ export default function ImportPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader userEmail={userEmail} onSignOut={handleSignOut} />
+      <SiteHeader />
 
       <PageContainer className="max-w-2xl">
         <div className="mb-4 flex gap-4 text-xs font-semibold">

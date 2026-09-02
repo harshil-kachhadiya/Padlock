@@ -7,7 +7,7 @@
  * point at a domain that isn't serving the site yet.
  */
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://padlock-extension.vercel.app"
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://padlock.extention.in"
 ).replace(/\/$/, "");
 
 export const SITE_NAME = "Padlock";

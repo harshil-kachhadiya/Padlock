@@ -36,7 +36,7 @@ export default function WelcomePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader userEmail={userEmail} />
+      <SiteHeader />
 
       <PageContainer className="flex flex-1 items-center justify-center">
         <Card className="w-full max-w-lg">

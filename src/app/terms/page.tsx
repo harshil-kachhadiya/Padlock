@@ -1,4 +1,4 @@
-import { Card, CardBody, SiteHeader, PageContainer } from "@/components/ui";
+import { Card, CardBody, SiteHeader, SiteFooter, PageContainer } from "@/components/ui";
 
 import type { Metadata } from "next";
 
@@ -70,6 +70,8 @@ export default function TermsPage() {
           </CardBody>
         </Card>
       </PageContainer>
+
+      <SiteFooter />
     </div>
   );
 }

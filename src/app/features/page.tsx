@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Card, CardBody, PageContainer } from "@/components/ui";
-import { FeaturesCta, FeaturesHeader } from "./FeaturesClient";
+import { Card, CardBody, PageContainer, SiteHeader, SiteFooter } from "@/components/ui";
+import { absoluteUrl } from "@/lib/seo";
+import { FeaturesCta } from "./FeaturesClient";
 
 export const metadata: Metadata = {
   title: "Features — Autofill, TOTP 2FA, Vault Health & Secure Notes",
@@ -137,10 +138,30 @@ const GROUPS: FeatureGroup[] = [
   },
 ];
 
+
+/**
+ * BreadcrumbList tells Google the site hierarchy. It powers the breadcrumb
+ * trail shown in results and is one of the signals feeding sitelink
+ * generation — unlike sitelinks themselves, it is markup we control.
+ */
+const breadcrumbStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    { "@type": "ListItem", position: 1, name: "Home", item: absoluteUrl("/") },
+    { "@type": "ListItem", position: 2, name: "Features", item: absoluteUrl("/features") },
+  ],
+};
+
 export default function FeaturesPage() {
   return (
     <div className="flex min-h-screen flex-col">
-      <FeaturesHeader />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }}
+      />
+
+      <SiteHeader />
 
       <PageContainer>
         <div className="text-center">
@@ -185,19 +206,7 @@ export default function FeaturesPage() {
         </div>
       </PageContainer>
 
-      <footer className="mt-auto border-t border-border py-6 text-center text-xs text-foreground-muted">
-        <nav className="flex justify-center gap-4 font-semibold">
-          <Link href="/" className="text-navy-700 hover:underline dark:text-gold-500">
-            Home
-          </Link>
-          <Link href="/privacy" className="text-navy-700 hover:underline dark:text-gold-500">
-            Privacy Policy
-          </Link>
-          <Link href="/terms" className="text-navy-700 hover:underline dark:text-gold-500">
-            Terms of Service
-          </Link>
-        </nav>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

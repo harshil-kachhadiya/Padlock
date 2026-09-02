@@ -4,6 +4,7 @@ export { PasswordInput } from "./PasswordInput";
 export { Card, CardHeader, CardBody } from "./Card";
 export { Alert } from "./Alert";
 export { SiteHeader } from "./SiteHeader";
+export { SiteFooter } from "./SiteFooter";
 export { ThemeToggle } from "./ThemeToggle";
 export { PageContainer } from "./PageContainer";
 export { TotpCode } from "./TotpCode";

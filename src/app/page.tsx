@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Card, CardBody, PageContainer } from "@/components/ui";
-import { SITE_NAME, SITE_URL, absoluteUrl } from "@/lib/seo";
-import { HomeCta, HomeHeader } from "./HomeClient";
+import { Card, CardBody, PageContainer, SiteHeader, SiteFooter } from "@/components/ui";
+import { SITE_URL, absoluteUrl } from "@/lib/seo";
+import { HomeCta } from "./HomeClient";
 
 export const metadata: Metadata = {
   title: "Padlock — Zero-Knowledge Password Manager with Browser Autofill",
@@ -123,7 +123,7 @@ export default function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
       />
 
-      <HomeHeader />
+      <SiteHeader />
 
       {/* Hero */}
       <PageContainer className="pb-0 text-center">
@@ -255,20 +255,7 @@ export default function Home() {
         </div>
       </PageContainer>
 
-      <footer className="mt-auto border-t border-border py-6 text-center text-xs text-foreground-muted">
-        <p>{SITE_NAME} — your master password never leaves your device.</p>
-        <nav className="mt-2 flex justify-center gap-4 font-semibold">
-          <Link href="/features" className="text-navy-700 hover:underline dark:text-gold-500">
-            Features
-          </Link>
-          <Link href="/privacy" className="text-navy-700 hover:underline dark:text-gold-500">
-            Privacy Policy
-          </Link>
-          <Link href="/terms" className="text-navy-700 hover:underline dark:text-gold-500">
-            Terms of Service
-          </Link>
-        </nav>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
