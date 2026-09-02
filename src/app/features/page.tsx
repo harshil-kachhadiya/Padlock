@@ -1,11 +1,21 @@
-"use client";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Card, CardBody, PageContainer } from "@/components/ui";
+import { FeaturesCta, FeaturesHeader } from "./FeaturesClient";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabaseClient";
-import { useKey } from "@/lib/keyContext";
-import { Button, Card, CardBody, SiteHeader, PageContainer } from "@/components/ui";
+export const metadata: Metadata = {
+  title: "Features — Autofill, TOTP 2FA, Vault Health & Secure Notes",
+  description:
+    "Every feature built into Padlock: zero-knowledge AES-256 encryption, one-click autofill, built-in TOTP two-factor codes, a password generator, vault health checks, encrypted notes, and CSV/JSON import and export.",
+  alternates: { canonical: "/features" },
+  openGraph: {
+    title: "Padlock Features — Autofill, TOTP 2FA, Vault Health & Secure Notes",
+    description:
+      "Zero-knowledge encryption, autofill, TOTP codes, a password generator, vault health checks, and encrypted notes.",
+    url: "/features",
+    type: "website",
+  },
+};
 
 type FeatureGroup = {
   title: string;
@@ -128,17 +138,9 @@ const GROUPS: FeatureGroup[] = [
 ];
 
 export default function FeaturesPage() {
-  const router = useRouter();
-  const { key } = useKey();
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-  }, []);
-
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader userEmail={user?.email} />
+      <FeaturesHeader />
 
       <PageContainer>
         <div className="text-center">
@@ -146,10 +148,15 @@ export default function FeaturesPage() {
             Everything Padlock does
           </p>
           <h1 className="mt-2 font-serif text-2xl font-bold text-foreground sm:text-3xl">
-            Features &amp; functionality
+            Padlock features &amp; functionality
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-sm text-foreground-muted">
-            A running list of what&apos;s built into the website and the browser extension so far.
+            Everything built into the{" "}
+            <Link href="/" className="font-semibold text-navy-700 hover:underline dark:text-gold-500">
+              Padlock password manager
+            </Link>{" "}
+            website and its browser extension — all of it running on the same zero-knowledge
+            encrypted vault.
           </p>
         </div>
 
@@ -174,11 +181,23 @@ export default function FeaturesPage() {
         ))}
 
         <div className="mt-10 text-center">
-          <Button onClick={() => router.push(key ? "/dashboard" : user ? "/unlock" : "/login")}>
-            {key ? "Go to your vault" : user ? "Unlock your vault" : "Get started"}
-          </Button>
+          <FeaturesCta />
         </div>
       </PageContainer>
+
+      <footer className="mt-auto border-t border-border py-6 text-center text-xs text-foreground-muted">
+        <nav className="flex justify-center gap-4 font-semibold">
+          <Link href="/" className="text-navy-700 hover:underline dark:text-gold-500">
+            Home
+          </Link>
+          <Link href="/privacy" className="text-navy-700 hover:underline dark:text-gold-500">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="text-navy-700 hover:underline dark:text-gold-500">
+            Terms of Service
+          </Link>
+        </nav>
+      </footer>
     </div>
   );
 }

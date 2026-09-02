@@ -1,7 +1,12 @@
 import { Card, CardBody, SiteHeader, PageContainer } from "@/components/ui";
 
-export const metadata = {
-  title: "Privacy Policy — Padlock",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "How Padlock handles your data: your master password never leaves your browser, saved passwords are stored only as ciphertext we cannot decrypt, and we never sell user data.",
+  alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {

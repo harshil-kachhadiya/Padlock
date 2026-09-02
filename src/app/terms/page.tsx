@@ -1,7 +1,12 @@
 import { Card, CardBody, SiteHeader, PageContainer } from "@/components/ui";
 
-export const metadata = {
-  title: "Terms of Service — Padlock",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description:
+    "Padlock's terms of service, including the zero-knowledge trade-off: because your master password is never stored, a forgotten master password means your vault cannot be recovered.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {

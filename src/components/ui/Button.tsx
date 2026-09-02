@@ -1,4 +1,5 @@
-import { ButtonHTMLAttributes, forwardRef } from "react";
+import { AnchorHTMLAttributes, ButtonHTMLAttributes, forwardRef } from "react";
+import Link from "next/link";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
@@ -13,6 +14,13 @@ const VARIANT_CLASSES: Record<Variant, string> = {
     "bg-transparent text-navy-800 dark:text-gold-500 border border-transparent hover:bg-navy-800/5 focus-visible:outline-navy-700",
 };
 
+const BASE_CLASSES =
+  "inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold tracking-wide transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed";
+
+export function buttonClasses(variant: Variant = "primary", className = "") {
+  return `${BASE_CLASSES} ${VARIANT_CLASSES[variant]} ${className}`;
+}
+
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
 };
@@ -25,10 +33,31 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     <button
       ref={ref}
       disabled={disabled}
-      className={`inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-semibold tracking-wide transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed ${VARIANT_CLASSES[variant]} ${className}`}
+      className={buttonClasses(variant, className)}
       {...rest}
     >
       {children}
     </button>
+  );
+});
+
+type ButtonLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
+  href: string;
+  variant?: Variant;
+};
+
+/**
+ * Button-styled navigation. Renders a real <a href>, so crawlers can discover
+ * and follow it — unlike a <button onClick={router.push()}>, which is invisible
+ * to search engines.
+ */
+export const ButtonLink = forwardRef<HTMLAnchorElement, ButtonLinkProps>(function ButtonLink(
+  { href, variant = "primary", className = "", children, ...rest },
+  ref
+) {
+  return (
+    <Link ref={ref} href={href} className={buttonClasses(variant, className)} {...rest}>
+      {children}
+    </Link>
   );
 });

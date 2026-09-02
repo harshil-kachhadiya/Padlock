@@ -1,11 +1,22 @@
-"use client";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Card, CardBody, PageContainer } from "@/components/ui";
+import { SITE_NAME, SITE_URL, absoluteUrl } from "@/lib/seo";
+import { HomeCta, HomeHeader } from "./HomeClient";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabaseClient";
-import { useKey } from "@/lib/keyContext";
-import { Button, Card, CardBody, SiteHeader, PageContainer } from "@/components/ui";
+export const metadata: Metadata = {
+  title: "Padlock — Zero-Knowledge Password Manager with Browser Autofill",
+  description:
+    "A free password manager that cannot read your passwords. Padlock encrypts every credential in your browser with AES-256-GCM, so only ciphertext ever reaches our servers. Includes autofill, TOTP 2FA codes, and a password generator.",
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "Padlock — Zero-Knowledge Password Manager with Browser Autofill",
+    description:
+      "A free password manager that cannot read your passwords. Everything is encrypted in your browser before it is sent anywhere.",
+    url: SITE_URL,
+    type: "website",
+  },
+};
 
 const FEATURES = [
   {
@@ -30,7 +41,7 @@ const FEATURES = [
   },
   {
     title: "Browser Extension",
-    body: "Autofill on any site, right-click \"Fill with Padlock,\" a save prompt when you log in somewhere new, and a built-in password generator.",
+    body: 'Autofill on any site, right-click "Fill with Padlock," a save prompt when you log in somewhere new, and a built-in password generator.',
   },
 ];
 
@@ -57,42 +68,62 @@ const STEPS = [
   },
 ];
 
+/**
+ * FAQ structured data. Every question/answer pair below is also rendered as
+ * visible page copy — Google requires the marked-up content to be present on
+ * the page, and mismatched FAQ markup is a manual-action risk.
+ */
+const FAQS = [
+  {
+    question: "What does zero-knowledge actually mean?",
+    answer:
+      "It means Padlock's servers never receive your master password or any readable version of your saved passwords. Encryption and decryption happen entirely in your browser, so the database only ever holds ciphertext that we have no key for.",
+  },
+  {
+    question: "What happens if I forget my master password?",
+    answer:
+      "Your vault cannot be recovered. Because your master password is never transmitted or stored, there is no reset link and no support process that can decrypt your data. Write it down and keep it somewhere safe.",
+  },
+  {
+    question: "Is Padlock free to use?",
+    answer:
+      "Yes. Both the website and the browser extension are free, and there is no paid tier, no advertising, and no selling of user data.",
+  },
+  {
+    question: "Which browsers does the extension support?",
+    answer:
+      "Any Chromium-based browser with Manifest V3 support, including Google Chrome, Microsoft Edge, and Brave.",
+  },
+  {
+    question: "Can Padlock generate two-factor authentication codes?",
+    answer:
+      "Yes. Padlock includes a built-in TOTP generator following RFC 6238, so you can store a site's 2FA setup key and generate live six-digit codes without a separate authenticator app.",
+  },
+];
+
+const faqStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "@id": absoluteUrl("/#faq"),
+  mainEntity: FAQS.map((faq) => ({
+    "@type": "Question",
+    name: faq.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: faq.answer,
+    },
+  })),
+};
+
 export default function Home() {
-  const router = useRouter();
-  const { key, clearKey } = useKey();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      setLoading(false);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    clearKey();
-    setUser(null);
-  }
-
-  function primaryCta() {
-    if (!user) return { label: "Sign in with Google", href: "/login" };
-    if (!key) return { label: "Set up / unlock vault", href: "/unlock" };
-    return { label: "Go to your vault", href: "/dashboard" };
-  }
-
-  const cta = primaryCta();
-
   return (
     <div className="flex min-h-screen flex-col">
-      <SiteHeader userEmail={user?.email} onSignOut={user ? handleSignOut : undefined} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqStructuredData) }}
+      />
+
+      <HomeHeader />
 
       {/* Hero */}
       <PageContainer className="pb-0 text-center">
@@ -107,30 +138,13 @@ export default function Home() {
           servers only ever see ciphertext — not your master password, not your data.
         </p>
 
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          {loading ? (
-            <span className="text-sm text-foreground-muted">Loading&hellip;</span>
-          ) : (
-            <Button onClick={() => router.push(cta.href)} className="min-w-[220px]">
-              {cta.label}
-            </Button>
-          )}
-        </div>
-
-        {user && (
-          <p className="mt-3 text-xs text-foreground-muted">
-            Signed in as {user.email} · Vault{" "}
-            <span className={key ? "font-semibold text-green-700" : "font-semibold text-red-600"}>
-              {key ? "unlocked" : "locked"}
-            </span>
-          </p>
-        )}
+        <HomeCta />
       </PageContainer>
 
       {/* Features */}
       <PageContainer>
         <h2 className="text-center font-serif text-xl font-bold text-foreground">
-          What you get
+          Encrypted password management, end to end
         </h2>
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((feature) => (
@@ -144,16 +158,27 @@ export default function Home() {
             </Card>
           ))}
         </div>
+        <p className="mt-6 text-center text-xs text-foreground-muted">
+          <Link
+            href="/features"
+            className="font-semibold text-navy-700 hover:underline dark:text-gold-500"
+          >
+            See the full feature list
+          </Link>
+        </p>
       </PageContainer>
 
       {/* How it works / user guide */}
       <PageContainer>
         <h2 className="text-center font-serif text-xl font-bold text-foreground">
-          How it works
+          How to set up your encrypted vault
         </h2>
         <ol className="mx-auto mt-6 max-w-2xl space-y-4">
           {STEPS.map((step, index) => (
-            <li key={step.title} className="flex gap-4 rounded-sm border border-border bg-surface p-4">
+            <li
+              key={step.title}
+              className="flex gap-4 rounded-sm border border-border bg-surface p-4"
+            >
               <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-navy-800 text-xs font-bold text-white">
                 {index + 1}
               </span>
@@ -171,14 +196,14 @@ export default function Home() {
         <Card>
           <CardBody>
             <h2 className="font-serif text-xl font-bold text-foreground">
-              How the encryption actually works
+              How Padlock&rsquo;s AES-256 encryption works
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-foreground-muted">
-              Your master password never leaves your browser. Instead, it's run through{" "}
+              Your master password never leaves your browser. Instead, it&rsquo;s run through{" "}
               <strong className="text-foreground">PBKDF2 with 250,000 iterations</strong> and a
               random salt to derive an <strong className="text-foreground">AES-256</strong>{" "}
-              encryption key — entirely on your device, using the browser's native Web Crypto
-              API.
+              encryption key — entirely on your device, using the browser&rsquo;s native Web
+              Crypto API.
             </p>
 
             <div className="mt-5 flex flex-col items-stretch gap-2 overflow-x-auto text-xs font-semibold sm:flex-row sm:items-center sm:justify-center">
@@ -201,31 +226,48 @@ export default function Home() {
             </div>
 
             <p className="mt-5 text-sm leading-relaxed text-foreground-muted">
-              On your next visit, we re-derive the same key from your password and try to
-              decrypt a small stored &ldquo;verifier&rdquo; value — if it matches, your password
-              was correct. Your master password itself is never compared, stored, or
-              transmitted at any point.
+              On your next visit, we re-derive the same key from your password and try to decrypt
+              a small stored &ldquo;verifier&rdquo; value — if it matches, your password was
+              correct. Your master password itself is never compared, stored, or transmitted at
+              any point.
             </p>
           </CardBody>
         </Card>
       </PageContainer>
 
-      <footer className="mt-auto border-t border-border py-6 text-center text-xs text-foreground-muted">
-        <p>Padlock — your master password never leaves your device.</p>
-        <div className="mt-2 flex justify-center gap-4 font-semibold">
-          <button
-            onClick={() => router.push("/privacy")}
-            className="text-navy-700 hover:underline dark:text-gold-500"
-          >
-            Privacy Policy
-          </button>
-          <button
-            onClick={() => router.push("/terms")}
-            className="text-navy-700 hover:underline dark:text-gold-500"
-          >
-            Terms of Service
-          </button>
+      {/* FAQ — visible copy backing the FAQPage structured data */}
+      <PageContainer>
+        <h2 className="text-center font-serif text-xl font-bold text-foreground">
+          Frequently asked questions
+        </h2>
+        <div className="mx-auto mt-6 max-w-2xl space-y-3">
+          {FAQS.map((faq) => (
+            <details
+              key={faq.question}
+              className="rounded-sm border border-border bg-surface p-4"
+            >
+              <summary className="cursor-pointer text-sm font-semibold text-foreground">
+                {faq.question}
+              </summary>
+              <p className="mt-2 text-xs leading-relaxed text-foreground-muted">{faq.answer}</p>
+            </details>
+          ))}
         </div>
+      </PageContainer>
+
+      <footer className="mt-auto border-t border-border py-6 text-center text-xs text-foreground-muted">
+        <p>{SITE_NAME} — your master password never leaves your device.</p>
+        <nav className="mt-2 flex justify-center gap-4 font-semibold">
+          <Link href="/features" className="text-navy-700 hover:underline dark:text-gold-500">
+            Features
+          </Link>
+          <Link href="/privacy" className="text-navy-700 hover:underline dark:text-gold-500">
+            Privacy Policy
+          </Link>
+          <Link href="/terms" className="text-navy-700 hover:underline dark:text-gold-500">
+            Terms of Service
+          </Link>
+        </nav>
       </footer>
     </div>
   );

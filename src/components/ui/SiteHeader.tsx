@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ThemeToggle } from "./ThemeToggle";
 
 type SiteHeaderProps = {
@@ -9,8 +9,6 @@ type SiteHeaderProps = {
 };
 
 export function SiteHeader({ userEmail, onSignOut }: SiteHeaderProps) {
-  const router = useRouter();
-
   return (
     <>
       <div className="bg-gray-800 px-4 py-1.5 text-center text-xs text-gray-100 sm:px-8">
@@ -19,10 +17,7 @@ export function SiteHeader({ userEmail, onSignOut }: SiteHeaderProps) {
       </div>
       <header className="border-b-4 border-header-border bg-header-bg">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-8">
-          <button
-            onClick={() => router.push("/")}
-            className="flex items-center gap-3 text-left"
-          >
+          <Link href="/" className="flex items-center gap-3 text-left" aria-label="Padlock home">
             <span className="flex h-9 w-9 items-center justify-center rounded-sm border-2 border-gold-500 p-1">
               <svg viewBox="0 0 512 512" className="h-full w-full" aria-hidden="true">
                 <path
@@ -45,30 +40,30 @@ export function SiteHeader({ userEmail, onSignOut }: SiteHeaderProps) {
                 Secure Credential Vault
               </span>
             </span>
-          </button>
+          </Link>
 
           <div className="flex items-center gap-4">
             <nav className="hidden items-center gap-3 sm:flex">
-              <button
-                onClick={() => router.push("/features")}
+              <Link
+                href="/features"
                 className="text-xs font-semibold text-gray-200 hover:text-white"
               >
                 Features
-              </button>
+              </Link>
               {userEmail && (
                 <>
-                  <button
-                    onClick={() => router.push("/profile")}
+                  <Link
+                    href="/profile"
                     className="text-xs font-semibold text-gray-200 hover:text-white"
                   >
                     Profile
-                  </button>
-                  <button
-                    onClick={() => router.push("/settings")}
+                  </Link>
+                  <Link
+                    href="/settings"
                     className="text-xs font-semibold text-gray-200 hover:text-white"
                   >
                     Settings
-                  </button>
+                  </Link>
                 </>
               )}
             </nav>

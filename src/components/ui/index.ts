@@ -1,4 +1,4 @@
-export { Button } from "./Button";
+export { Button, ButtonLink, buttonClasses } from "./Button";
 export { Input } from "./Input";
 export { PasswordInput } from "./PasswordInput";
 export { Card, CardHeader, CardBody } from "./Card";

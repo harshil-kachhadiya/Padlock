@@ -1,0 +1,85 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabaseClient";
+import { useKey } from "@/lib/keyContext";
+import { ButtonLink, SiteHeader } from "@/components/ui";
+
+/**
+ * Only the auth-dependent chrome (header state + primary CTA) needs to be
+ * client-side. All indexable copy lives in the server component so it renders
+ * in the initial HTML with no dependency on client hydration.
+ */
+export function HomeHeader() {
+  const { clearKey } = useKey();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    clearKey();
+    setUser(null);
+  }
+
+  return (
+    <SiteHeader userEmail={user?.email} onSignOut={user ? handleSignOut : undefined} />
+  );
+}
+
+export function HomeCta() {
+  const { key } = useKey();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const cta = !user
+    ? { label: "Sign in with Google", href: "/login" }
+    : !key
+      ? { label: "Set up / unlock vault", href: "/unlock" }
+      : { label: "Go to your vault", href: "/dashboard" };
+
+  return (
+    <>
+      <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        {loading ? (
+          <span className="text-sm text-foreground-muted">Loading&hellip;</span>
+        ) : (
+          <ButtonLink href={cta.href} className="min-w-[220px]">
+            {cta.label}
+          </ButtonLink>
+        )}
+      </div>
+
+      {user && (
+        <p className="mt-3 text-xs text-foreground-muted">
+          Signed in as {user.email} &middot; Vault{" "}
+          <span className={key ? "font-semibold text-green-700" : "font-semibold text-red-600"}>
+            {key ? "unlocked" : "locked"}
+          </span>
+        </p>
+      )}
+    </>
+  );
+}
