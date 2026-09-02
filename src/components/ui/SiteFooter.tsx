@@ -17,6 +17,9 @@ export function SiteFooter() {
         <Link href="/features" className="text-navy-700 hover:underline dark:text-gold-500">
           Features
         </Link>
+        <Link href="/install" className="text-navy-700 hover:underline dark:text-gold-500">
+          Install
+        </Link>
         <Link href="/privacy" className="text-navy-700 hover:underline dark:text-gold-500">
           Privacy Policy
         </Link>

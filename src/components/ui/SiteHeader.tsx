@@ -113,9 +113,13 @@ export function SiteHeader() {
     { href: vaultHref, label: "Vault", matchPrefix: "/dashboard" },
     { href: "/dashboard/notes", label: "Notes" },
     { href: "/features", label: "Features" },
+    { href: "/install", label: "Install" },
   ];
 
-  const signedOutLinks: NavLink[] = [{ href: "/features", label: "Features" }];
+  const signedOutLinks: NavLink[] = [
+    { href: "/features", label: "Features" },
+    { href: "/install", label: "Install" },
+  ];
 
   const links = user ? signedInLinks : signedOutLinks;
 

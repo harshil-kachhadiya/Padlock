@@ -43,3 +43,6 @@ next-env.d.ts
 
 # Chrome Web Store upload artifact
 extension.zip
+# public/padlock-extension.zip is intentionally committed — it is the download
+# the /install page serves, and Vercel's build image has no zip tooling.
+!public/padlock-extension.zip

@@ -41,9 +41,14 @@ export function HomeCta() {
         {loading ? (
           <span className="text-sm text-foreground-muted">Loading&hellip;</span>
         ) : (
-          <ButtonLink href={cta.href} className="min-w-[220px]">
-            {cta.label}
-          </ButtonLink>
+          <>
+            <ButtonLink href={cta.href} className="min-w-[220px]">
+              {cta.label}
+            </ButtonLink>
+            <ButtonLink href="/install" variant="secondary" className="min-w-[220px]">
+              Get the browser extension
+            </ButtonLink>
+          </>
         )}
       </div>
 
