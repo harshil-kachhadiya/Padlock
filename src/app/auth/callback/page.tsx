@@ -10,13 +10,47 @@ export default function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (error || !data.session) {
-        setError(error?.message ?? "No session found");
+    let done = false;
+
+    function finish() {
+      if (done) return;
+      done = true;
+      router.replace("/");
+    }
+
+    /**
+     * Under PKCE the client exchanges the ?code= for a session during
+     * initialization, so the session may not exist yet on first paint. Listen
+     * for the sign-in event and also check directly, whichever lands first.
+     */
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) finish();
+    });
+
+    supabase.auth.getSession().then(({ data, error: sessionError }) => {
+      if (data.session) {
+        finish();
         return;
       }
-      router.replace("/");
+      if (sessionError) {
+        setError(sessionError.message);
+        done = true;
+      }
     });
+
+    // If neither path produced a session, surface a real error rather than
+    // spinning on "Signing you in…" forever.
+    const timeout = setTimeout(() => {
+      if (!done) {
+        setError("Sign-in did not complete. Please try again.");
+        done = true;
+      }
+    }, 10000);
+
+    return () => {
+      listener.subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [router]);
 
   return (
@@ -26,7 +60,15 @@ export default function AuthCallbackPage() {
         <Card className="w-full max-w-sm">
           <CardBody className="text-center">
             {error ? (
-              <Alert variant="error">Sign-in failed: {error}</Alert>
+              <>
+                <Alert variant="error">Sign-in failed: {error}</Alert>
+                <button
+                  onClick={() => router.replace("/login")}
+                  className="mt-3 text-xs font-semibold text-navy-700 hover:underline dark:text-gold-500"
+                >
+                  Back to sign in
+                </button>
+              </>
             ) : (
               <p className="text-sm text-foreground-muted">Signing you in&hellip;</p>
             )}
