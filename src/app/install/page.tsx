@@ -1,52 +1,40 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  Alert,
   Card,
   CardBody,
   PageContainer,
   SiteFooter,
   SiteHeader,
 } from "@/components/ui";
-import { absoluteUrl } from "@/lib/seo";
-import manifest from "../../../extension/manifest.json";
+import { CHROME_STORE_URL, absoluteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Install the Padlock Browser Extension",
   description:
-    "Download the Padlock browser extension and load it in Chrome, Edge, or Brave. Step-by-step instructions for installing the zero-knowledge password manager extension while the Chrome Web Store listing is under review.",
+    "Add the Padlock extension to Chrome, Edge, or Brave. Autofill, a right-click fill menu, save-on-submit prompts, and TOTP two-factor codes, all running on the same zero-knowledge encrypted vault.",
   alternates: { canonical: "/install" },
   openGraph: {
     title: "Install the Padlock Browser Extension",
     description:
-      "Download the Padlock extension and load it in any Chromium browser in under a minute.",
+      "Add Padlock to your browser for autofill, 2FA codes, and a password generator — free.",
     url: "/install",
     type: "website",
   },
 };
 
-const DOWNLOAD_PATH = "/padlock-extension.zip";
-
 const STEPS = [
   {
-    title: "Download and unzip",
-    body: "Download the file below, then extract it. Chrome needs an unzipped folder — it cannot load a .zip file directly.",
+    title: "Add it from the Chrome Web Store",
+    body: "Click the button above. The store page opens, and you install with Add to Chrome — the same as any other extension.",
   },
   {
-    title: "Open your browser's extensions page",
-    body: "Go to chrome://extensions in Chrome, edge://extensions in Edge, or brave://extensions in Brave. Paste it into the address bar — links to these pages cannot be clicked for security reasons.",
+    title: "Pin Padlock to your toolbar",
+    body: "Click the extensions icon in your browser's toolbar, then the pin next to Padlock so it stays one click away.",
   },
   {
-    title: "Turn on Developer mode",
-    body: "Use the Developer mode toggle in the top-right corner of that page.",
-  },
-  {
-    title: 'Click "Load unpacked"',
-    body: "A button appears in the top-left once Developer mode is on. Select the folder you extracted — the one containing manifest.json, not its parent.",
-  },
-  {
-    title: "Pin it and sign in",
-    body: "Padlock now appears in your extensions. Pin it to your toolbar, click the icon, and sign in with the same Google account you use on this site. Your vault syncs automatically.",
+    title: "Sign in and unlock",
+    body: "Click the Padlock icon and sign in with the same Google account you use here, then enter your master password. Your vault syncs automatically — the extension and this site share one encrypted vault.",
   },
 ];
 
@@ -56,8 +44,8 @@ const howToStructuredData = {
   "@id": absoluteUrl("/install#howto"),
   name: "Install the Padlock browser extension",
   description:
-    "How to download the Padlock extension and load it as an unpacked extension in a Chromium-based browser.",
-  totalTime: "PT2M",
+    "How to add the Padlock password manager extension to a Chromium-based browser and sign in to your vault.",
+  totalTime: "PT1M",
   step: STEPS.map((step, index) => ({
     "@type": "HowToStep",
     position: index + 1,
@@ -100,41 +88,24 @@ export default function InstallPage() {
         <Card className="mt-8">
           <CardBody className="text-center">
             <a
-              href={DOWNLOAD_PATH}
-              download
+              href={CHROME_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-sm border border-navy-900 bg-navy-800 px-6 py-3 text-sm font-semibold tracking-wide text-white transition-colors hover:bg-navy-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-500"
             >
-              <svg
-                viewBox="0 0 24 24"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M12 3v12" />
-                <path d="M7 10l5 5 5-5" />
-                <path d="M5 21h14" />
+              <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true" fill="currentColor">
+                <path d="M12 2a10 10 0 0 1 8.66 5H12a5 5 0 0 0-4.76 3.47L3.5 4.9A10 10 0 0 1 12 2Zm10 10a10 10 0 0 1-9.34 9.98l3.9-6.75A5 5 0 0 0 17 12h5ZM2 12a10 10 0 0 0 8.2 9.83L6.3 15.1A5 5 0 0 1 2.02 11.3L2 12Zm10 3a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" />
               </svg>
-              Download extension v{manifest.version}
+              Add to Chrome — free
             </a>
             <p className="mt-3 text-xs text-foreground-muted">
-              padlock-extension.zip &middot; Chrome, Edge, Brave, and other Chromium browsers
+              Works in Chrome, Edge, Brave, and other Chromium browsers
             </p>
           </CardBody>
         </Card>
 
-        <Alert variant="info">
-          The Chrome Web Store listing is still under review, so for now the extension
-          installs manually. Two things to know: Chrome will show a &ldquo;disable developer
-          mode extensions&rdquo; notice on startup, and a manually loaded extension does not
-          auto-update &mdash; you will need to download it again when a new version ships.
-        </Alert>
-
         <h2 className="mt-10 font-serif text-xl font-bold text-foreground">
-          How to load it &mdash; about two minutes
+          Getting set up &mdash; about a minute
         </h2>
         <ol className="mt-5 space-y-4">
           {STEPS.map((step, index) => (
@@ -158,40 +129,37 @@ export default function InstallPage() {
         <Card className="mt-10">
           <CardBody>
             <h2 className="font-serif text-lg font-bold text-foreground">
-              Is loading it manually safe?
+              What the extension can and cannot see
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-foreground-muted">
-              &ldquo;Load unpacked&rdquo; is the standard way developers run extensions, and
-              it is the same code that will ship to the Chrome Web Store. Because the folder
-              is unpacked on your own machine, you can read every file in it before you load
-              it &mdash; including{" "}
-              <code className="rounded bg-surface-muted px-1 py-0.5 text-xs">crypto.js</code>,
-              which does the encryption. Nothing is minified or obfuscated.
+              The extension needs access to the sites you visit so it can find login fields and
+              fill them. It does not read or transmit page content beyond the specific fields
+              involved in an autofill or save action you start yourself.
             </p>
             <p className="mt-3 text-sm leading-relaxed text-foreground-muted">
-              The security model does not change: your master password is still derived into
-              a key locally and never sent anywhere, and the extension only ever transmits
-              ciphertext. See the{" "}
+              The security model is identical to the website: your master password is derived
+              into a key on your own device and never sent anywhere, and only ciphertext is ever
+              transmitted. The{" "}
               <Link
                 href="/privacy"
                 className="font-semibold text-navy-700 hover:underline dark:text-gold-500"
               >
                 privacy policy
               </Link>{" "}
-              for exactly what each permission is used for.
+              breaks down exactly what each permission is used for.
             </p>
           </CardBody>
         </Card>
 
         <p className="mt-8 text-center text-xs text-foreground-muted">
-          Prefer to wait for the official store listing? You can{" "}
+          Don&rsquo;t want an extension? You can{" "}
           <Link
             href="/"
             className="font-semibold text-navy-700 hover:underline dark:text-gold-500"
           >
             use Padlock on the web
           </Link>{" "}
-          in the meantime &mdash; same vault, same encryption.
+          instead &mdash; same vault, same encryption.
         </p>
       </PageContainer>
 
