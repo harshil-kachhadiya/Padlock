@@ -9,6 +9,7 @@ import {
   SITE_TAGLINE,
   SITE_DESCRIPTION,
   CHROME_STORE_URL,
+  EXTENSION_PUBLISHED,
   absoluteUrl,
 } from "@/lib/seo";
 import "./globals.css";
@@ -88,7 +89,9 @@ const structuredData = {
       name: SITE_NAME,
       url: SITE_URL,
       description: SITE_DESCRIPTION,
-      sameAs: [CHROME_STORE_URL],
+      // Only cite the store listing once it resolves — pointing search engines
+      // at a page that 404s does more harm than omitting the field.
+      ...(EXTENSION_PUBLISHED ? { sameAs: [CHROME_STORE_URL] } : {}),
     },
     {
       "@type": "WebSite",
@@ -108,7 +111,7 @@ const structuredData = {
       operatingSystem: "Chrome, Edge, Brave, Web",
       description: SITE_DESCRIPTION,
       url: SITE_URL,
-      installUrl: CHROME_STORE_URL,
+      ...(EXTENSION_PUBLISHED ? { installUrl: CHROME_STORE_URL } : {}),
       browserRequirements: "Requires a Chromium-based browser with Manifest V3 support.",
       offers: {
         "@type": "Offer",

@@ -24,6 +24,24 @@ export const CHROME_EXTENSION_ID = "jigllelbimfkinedfpcdcmnlodggohig";
 
 export const CHROME_STORE_URL = `https://chromewebstore.google.com/detail/${CHROME_EXTENSION_ID}`;
 
+/**
+ * Whether the Chrome Web Store listing is live.
+ *
+ * While this is false the /install page shows a "coming soon" state instead of
+ * an install button, and the SoftwareApplication structured data omits
+ * installUrl — pointing either at a store page that 404s would strand visitors
+ * and advertise a dead install link to Google.
+ *
+ * Flip it either way:
+ *   - set NEXT_PUBLIC_EXTENSION_PUBLISHED=true in the hosting environment, or
+ *   - change the fallback below to true and redeploy.
+ *
+ * The default is false on purpose: a missing or misspelled env var should fail
+ * closed to "not published" rather than exposing a broken button.
+ */
+export const EXTENSION_PUBLISHED =
+  (process.env.NEXT_PUBLIC_EXTENSION_PUBLISHED ?? "false").toLowerCase() === "true";
+
 export function absoluteUrl(path = "/") {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
