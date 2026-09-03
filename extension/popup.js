@@ -377,13 +377,28 @@ function buildEntryNode(site, activePassword, session, key, onChanged, hintOnlyM
       // inject on page load, so the fix really is "reload the tab", not
       // just a retry. Naming that case distinctly beats a generic failure
       // message, since the fix is different for each.
+      const message = err?.message || "";
       const isNoContentScript = /Receiving end does not exist|Could not establish connection/.test(
-        err?.message ?? ""
+        message
       );
+
+      // Some failures here (WebCrypto decrypt errors in particular) throw a
+      // DOMException whose .message can be an empty string, which made the
+      // toast just say "unknown error" with no way to tell what actually
+      // happened. Log everything identifiable about the real error so it's
+      // readable from the popup's own devtools console (right-click the
+      // extension icon -> Inspect popup) instead of being a dead end.
+      console.error("Padlock: autofill failed", {
+        name: err?.name,
+        message: err?.message,
+        stack: err?.stack,
+        raw: err,
+      });
+
       showToast(
         isNoContentScript
           ? "This tab was open before Padlock last updated — reload the tab and try again"
-          : `Autofill failed: ${err?.message || "unknown error"}`,
+          : `Autofill failed${err?.name ? ` (${err.name})` : ""}${message ? `: ${message}` : ""} — see the popup's console for details`,
         "error"
       );
       button.textContent = "Failed";
