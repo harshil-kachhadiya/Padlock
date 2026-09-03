@@ -370,8 +370,22 @@ function buildEntryNode(site, activePassword, session, key, onChanged, hintOnlyM
         showToast(`No login form found on this page for ${site.site_name}`, "error");
         button.textContent = "No form found";
       }
-    } catch {
-      showToast("Autofill failed — try reloading this tab", "error");
+    } catch (err) {
+      // "Could not establish connection" specifically means this tab has no
+      // content script running — almost always because the extension was
+      // reloaded/updated after the tab was opened. Content scripts only
+      // inject on page load, so the fix really is "reload the tab", not
+      // just a retry. Naming that case distinctly beats a generic failure
+      // message, since the fix is different for each.
+      const isNoContentScript = /Receiving end does not exist|Could not establish connection/.test(
+        err?.message ?? ""
+      );
+      showToast(
+        isNoContentScript
+          ? "This tab was open before Padlock last updated — reload the tab and try again"
+          : `Autofill failed: ${err?.message || "unknown error"}`,
+        "error"
+      );
       button.textContent = "Failed";
     } finally {
       setTimeout(() => {
@@ -561,8 +575,11 @@ async function showVault(session, key) {
           // user clicked, so surfacing an error would be more surprising
           // than helpful.
         })
-        .catch(() => {
-          /* silent — same reasoning as the no-form case above */
+        .catch((err) => {
+          // No toast — same reasoning as the no-form case above — but still
+          // logged, so "auto-fill silently isn't happening" is debuggable
+          // from devtools instead of a total black box.
+          console.warn("Padlock: auto-fill-on-open failed:", err);
         });
     }
   }
@@ -575,7 +592,10 @@ async function showVault(session, key) {
   );
 
   allSection.querySelector(".section-summary").textContent = `All items (${entries.length})`;
-  allSection.open = matching.length === 0 || expandByDefault;
+  // Strictly respects the setting — it previously also forced this open
+  // whenever nothing matched the current site, which silently overrode an
+  // explicit "off" and made the toggle look broken.
+  allSection.open = expandByDefault;
 
   for (const { site, activePassword } of rest) {
     allList.appendChild(buildEntryNode(site, activePassword, session, key, refresh, hintOnlyMode));
