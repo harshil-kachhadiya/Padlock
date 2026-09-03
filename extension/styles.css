@@ -83,6 +83,10 @@ body {
   font-size: 13px;
 }
 
+.field-hint {
+  margin-top: 4px;
+}
+
 .error {
   color: var(--red);
   font-size: 12px;

@@ -391,6 +391,25 @@ export default function SettingsPage() {
                 </span>
               </span>
             </label>
+
+            <label className="mt-4 flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={settings.hint_only_mode}
+                onChange={(e) => updateSetting("hint_only_mode", e.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Show hint instead of autofilling password
+                </span>
+                <span className="block text-xs text-foreground-muted">
+                  When the extension autofills a site that has a hint set (see the entry&rsquo;s
+                  edit form), it shows the hint instead of filling in the real password.
+                  Entries without a hint autofill normally either way.
+                </span>
+              </span>
+            </label>
           </CardBody>
         </Card>
 

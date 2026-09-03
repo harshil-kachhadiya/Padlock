@@ -67,7 +67,7 @@ async function copyToClipboard(text, { autoClear = false, label = "Copied" } = {
 let toastTimeout;
 let toastHideTimeout;
 
-function showToast(message, variant = "info", action = null) {
+function showToast(message, variant = "info", action = null, durationMs = null) {
   const toast = document.getElementById("toast");
   clearTimeout(toastTimeout);
   clearTimeout(toastHideTimeout);
@@ -99,7 +99,7 @@ function showToast(message, variant = "info", action = null) {
 
   requestAnimationFrame(() => toast.classList.add("show"));
 
-  const duration = action ? 5000 : 2200;
+  const duration = durationMs ?? (action ? 5000 : 2200);
   toastTimeout = setTimeout(() => {
     toast.classList.remove("show");
     toastHideTimeout = setTimeout(() => {
@@ -272,7 +272,7 @@ async function handleUnlock(session, userRow) {
   }
 }
 
-function buildEntryNode(site, activePassword, session, key, onChanged, matchReason) {
+function buildEntryNode(site, activePassword, session, key, onChanged, hintOnlyMode, matchReason) {
   const entryTemplate = document.getElementById("tpl-entry");
   const node = entryTemplate.content.cloneNode(true);
   node.querySelector(".entry-name").textContent = site.site_name;
@@ -306,7 +306,13 @@ function buildEntryNode(site, activePassword, session, key, onChanged, matchReas
     button.textContent = "Filling…";
 
     try {
-      const plaintext = await decryptEntry(key, activePassword.encrypted_password);
+      // Hint mode only takes over when the entry actually has a hint set —
+      // otherwise there'd be nothing to show the user and autofill would
+      // silently do less than expected.
+      const useHint = hintOnlyMode && Boolean(activePassword.encrypted_hint);
+      const plaintext = useHint
+        ? null
+        : await decryptEntry(key, activePassword.encrypted_password);
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
       const response = await chrome.tabs.sendMessage(tab.id, {
@@ -315,7 +321,12 @@ function buildEntryNode(site, activePassword, session, key, onChanged, matchReas
         password: plaintext,
       });
 
-      if (response?.ok) {
+      if (useHint) {
+        const hintText = await decryptEntry(key, activePassword.encrypted_hint);
+        const parts = response?.filledUsername ? ["username filled — "] : [];
+        showToast(`${parts.join("")}Hint: ${hintText}`, "info", null, 6000);
+        button.textContent = "Hint shown";
+      } else if (response?.ok) {
         const parts = [];
         if (response.filledUsername) parts.push("username");
         if (response.filledPassword) parts.push("password");
@@ -409,6 +420,12 @@ async function showVault(session, key) {
 
   const activeUrl = await getActiveTabUrl();
   const activeHost = hostnameOf(activeUrl);
+  const hintOnlyMode = await fetchUserSetting(
+    session.access_token,
+    session.user.id,
+    "hint_only_mode",
+    false
+  );
 
   let allSites;
   try {
@@ -453,7 +470,7 @@ async function showVault(session, key) {
     allSection.open = true;
     allSection.querySelector(".section-summary").textContent = "All items";
     for (const { site, activePassword } of entries) {
-      allList.appendChild(buildEntryNode(site, activePassword, session, key, refresh));
+      allList.appendChild(buildEntryNode(site, activePassword, session, key, refresh, hintOnlyMode));
     }
     return;
   }
@@ -474,7 +491,7 @@ async function showVault(session, key) {
       const siteHost = hostnameOf(`https://${site.site_url}`);
       const reason =
         siteHost && siteHost !== activeHost ? `Saved for ${siteHost} — same domain` : null;
-      matchList.appendChild(buildEntryNode(site, activePassword, session, key, refresh, reason));
+      matchList.appendChild(buildEntryNode(site, activePassword, session, key, refresh, hintOnlyMode, reason));
     }
   }
 
@@ -489,7 +506,7 @@ async function showVault(session, key) {
   allSection.open = matching.length === 0 || expandByDefault;
 
   for (const { site, activePassword } of rest) {
-    allList.appendChild(buildEntryNode(site, activePassword, session, key, refresh));
+    allList.appendChild(buildEntryNode(site, activePassword, session, key, refresh, hintOnlyMode));
   }
 }
 
@@ -541,6 +558,7 @@ async function showEntryForm(session, key, existing) {
   const urlInput = app.querySelector("#form-site-url");
   const usernameInput = app.querySelector("#form-username");
   const passwordInput = app.querySelector("#form-password");
+  const hintInput = app.querySelector("#form-hint");
   const errorEl = app.querySelector("#entry-form-error");
 
   const toggleVisibilityBtn = app.querySelector("#toggle-password-visibility");
@@ -556,6 +574,7 @@ async function showEntryForm(session, key, existing) {
 
   const formKey = existing ? `edit:${existing.site.id}` : "add";
   let originalPassword = null;
+  let originalHint = "";
 
   if (existing) {
     app.querySelector("#entry-form-title").textContent = "Edit entry";
@@ -564,6 +583,11 @@ async function showEntryForm(session, key, existing) {
     usernameInput.value = existing.site.username || "";
     originalPassword = await decryptEntry(key, existing.activePassword.encrypted_password);
     passwordInput.value = originalPassword;
+
+    if (existing.activePassword.encrypted_hint) {
+      originalHint = await decryptEntry(key, existing.activePassword.encrypted_hint);
+      hintInput.value = originalHint;
+    }
   } else {
     const tab = await getActiveTab();
     const host = hostnameOf(tab?.url ?? "");
@@ -594,6 +618,7 @@ async function showEntryForm(session, key, existing) {
     urlInput.value = draft.siteUrl ?? urlInput.value;
     usernameInput.value = draft.username ?? usernameInput.value;
     passwordInput.value = draft.password ?? passwordInput.value;
+    hintInput.value = draft.hint ?? hintInput.value;
     showToast("Restored your unsaved changes", "info");
   }
 
@@ -614,11 +639,12 @@ async function showEntryForm(session, key, existing) {
         siteUrl: urlInput.value,
         username: usernameInput.value,
         password: passwordInput.value,
+        hint: hintInput.value,
       });
     }, 400);
   }
 
-  [nameInput, urlInput, usernameInput, passwordInput].forEach((input) =>
+  [nameInput, urlInput, usernameInput, passwordInput, hintInput].forEach((input) =>
     input.addEventListener("input", scheduleDraftSave)
   );
 
@@ -678,6 +704,7 @@ async function showEntryForm(session, key, existing) {
     const siteUrl = urlInput.value.trim();
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
+    const hintValue = hintInput.value.trim();
 
     if (!siteName || !siteUrl || !password) {
       errorEl.textContent = "Site name, site URL, and password are required.";
@@ -688,18 +715,37 @@ async function showEntryForm(session, key, existing) {
     try {
       if (existing) {
         await updateSite(session.access_token, existing.site.id, { siteName, siteUrl, username });
-        if (password !== originalPassword) {
-          const encryptedPassword = await encryptEntry(key, password);
-          await updatePassword(session.access_token, existing.activePassword.id, encryptedPassword);
+
+        const passwordChanged = password !== originalPassword;
+        const hintChanged = hintValue !== originalHint;
+
+        if (passwordChanged || hintChanged) {
+          const encryptedPassword = passwordChanged ? await encryptEntry(key, password) : null;
+          const hintUpdate = hintChanged
+            ? { included: true, value: hintValue ? await encryptEntry(key, hintValue) : null }
+            : undefined;
+          await updatePassword(
+            session.access_token,
+            existing.activePassword.id,
+            encryptedPassword,
+            hintUpdate
+          );
         }
       } else {
         const encryptedPassword = await encryptEntry(key, password);
+        const encryptedHint = hintValue ? await encryptEntry(key, hintValue) : null;
         const newSite = await createSite(session.access_token, session.user.id, {
           siteName,
           siteUrl,
           username,
         });
-        await createPassword(session.access_token, session.user.id, newSite.id, encryptedPassword);
+        await createPassword(
+          session.access_token,
+          session.user.id,
+          newSite.id,
+          encryptedPassword,
+          encryptedHint
+        );
       }
 
       await clearDraft();

@@ -20,7 +20,7 @@ async function fetchSitesWithPasswords(accessToken, userId) {
   const url =
     `${PADLOCK_CONFIG.SUPABASE_URL}/rest/v1/sites` +
     `?user_id=eq.${userId}&deleted=eq.false` +
-    `&select=id,site_name,site_url,username,passwords(id,encrypted_password,created_at,deleted)`;
+    `&select=id,site_name,site_url,username,passwords(id,encrypted_password,encrypted_hint,created_at,deleted)`;
 
   const res = await fetch(url, { headers: restHeaders(accessToken) });
   if (!res.ok) throw new Error("Failed to load entries.");
@@ -44,7 +44,7 @@ async function createSite(accessToken, userId, { siteName, siteUrl, username }) 
   return rows[0];
 }
 
-async function createPassword(accessToken, userId, siteId, encryptedPassword) {
+async function createPassword(accessToken, userId, siteId, encryptedPassword, encryptedHint) {
   const res = await fetch(`${PADLOCK_CONFIG.SUPABASE_URL}/rest/v1/passwords`, {
     method: "POST",
     headers: restHeaders(accessToken),
@@ -52,6 +52,7 @@ async function createPassword(accessToken, userId, siteId, encryptedPassword) {
       site_id: siteId,
       user_id: userId,
       encrypted_password: encryptedPassword,
+      encrypted_hint: encryptedHint || null,
     }),
   });
 
@@ -68,14 +69,17 @@ async function updateSite(accessToken, siteId, { siteName, siteUrl, username }) 
   if (!res.ok) throw new Error("Failed to update site.");
 }
 
-async function updatePassword(accessToken, passwordId, encryptedPassword) {
+async function updatePassword(accessToken, passwordId, encryptedPassword, hintUpdate) {
+  const body = { updated_at: new Date().toISOString() };
+  if (encryptedPassword) body.encrypted_password = encryptedPassword;
+  // hintUpdate: { included: true, value: <payload | null> } — distinguishes
+  // "clear the hint" from "leave it as-is", same convention as the website API.
+  if (hintUpdate?.included) body.encrypted_hint = hintUpdate.value;
+
   const res = await fetch(`${PADLOCK_CONFIG.SUPABASE_URL}/rest/v1/passwords?id=eq.${passwordId}`, {
     method: "PATCH",
     headers: restHeaders(accessToken),
-    body: JSON.stringify({
-      encrypted_password: encryptedPassword,
-      updated_at: new Date().toISOString(),
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) throw new Error("Failed to update password.");

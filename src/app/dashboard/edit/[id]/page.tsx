@@ -31,6 +31,8 @@ export default function EditEntryPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [originalPassword, setOriginalPassword] = useState("");
+  const [hint, setHint] = useState("");
+  const [originalHint, setOriginalHint] = useState("");
   const [totpSecret, setTotpSecret] = useState("");
   const [originalTotpSecret, setOriginalTotpSecret] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +56,7 @@ export default function EditEntryPage() {
       const { data: site, error: siteError } = await supabase
         .from("sites")
         .select(
-          "site_name, site_url, username, encrypted_totp_secret, passwords(id, encrypted_password, created_at, deleted)"
+          "site_name, site_url, username, encrypted_totp_secret, passwords(id, encrypted_password, encrypted_hint, created_at, deleted)"
         )
         .eq("id", siteId)
         .eq("user_id", user.id)
@@ -81,7 +83,13 @@ export default function EditEntryPage() {
       }
 
       const activePassword = (
-        site.passwords as { id: string; encrypted_password: EncryptedPayload; created_at: string; deleted: boolean }[]
+        site.passwords as {
+          id: string;
+          encrypted_password: EncryptedPayload;
+          encrypted_hint: EncryptedPayload | null;
+          created_at: string;
+          deleted: boolean;
+        }[]
       )
         .filter((p) => !p.deleted)
         .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
@@ -90,6 +98,12 @@ export default function EditEntryPage() {
         const plaintext = await decryptEntry(key!, activePassword.encrypted_password);
         setPassword(plaintext);
         setOriginalPassword(plaintext);
+
+        if (activePassword.encrypted_hint) {
+          const hintPlaintext = await decryptEntry(key!, activePassword.encrypted_hint);
+          setHint(hintPlaintext);
+          setOriginalHint(hintPlaintext);
+        }
       }
 
       setLoading(false);
@@ -133,6 +147,11 @@ export default function EditEntryPage() {
 
       const totpChanged = totpSecret !== originalTotpSecret;
       const body: Record<string, unknown> = { siteName, siteUrl, username, encryptedPassword };
+
+      const hintChanged = hint !== originalHint;
+      if (hintChanged) {
+        body.encryptedHint = hint ? await encryptEntry(key, hint) : null;
+      }
 
       if (totpChanged) {
         body.encryptedTotpSecret = totpSecret
@@ -209,6 +228,15 @@ export default function EditEntryPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 revealDisabled={settings.never_show_passwords}
+              />
+
+              <Input
+                label="Hint (optional)"
+                type="text"
+                value={hint}
+                onChange={(e) => setHint(e.target.value)}
+                placeholder="e.g. name@123"
+                hint="Shown instead of the real password when autofill hint mode is on — never a substitute for a strong password."
               />
 
               <Input

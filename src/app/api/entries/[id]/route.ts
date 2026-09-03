@@ -37,6 +37,9 @@ export async function PATCH(
   const { supabase, user } = authed;
   const body = await request.json();
   const { siteName, siteUrl, username, encryptedPassword } = body;
+  // `null` clears the hint, an object updates it, omitting the field leaves
+  // it as-is — same convention as encryptedTotpSecret below.
+  const hasHintUpdate = "encryptedHint" in body;
 
   const siteUpdate: Record<string, unknown> = {
     site_name: siteName,
@@ -59,7 +62,7 @@ export async function PATCH(
     return NextResponse.json({ error: siteUpdateError.message }, { status: 400 });
   }
 
-  if (encryptedPassword) {
+  if (encryptedPassword || hasHintUpdate) {
     const { data: activePassword, error: findError } = await supabase
       .from("passwords")
       .select("id")
@@ -74,20 +77,27 @@ export async function PATCH(
       return NextResponse.json({ error: findError.message }, { status: 400 });
     }
 
+    const passwordUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (encryptedPassword) passwordUpdate.encrypted_password = encryptedPassword;
+    if (hasHintUpdate) passwordUpdate.encrypted_hint = body.encryptedHint;
+
     if (activePassword) {
       const { error: passwordUpdateError } = await supabase
         .from("passwords")
-        .update({ encrypted_password: encryptedPassword, updated_at: new Date().toISOString() })
+        .update(passwordUpdate)
         .eq("id", activePassword.id);
 
       if (passwordUpdateError) {
         return NextResponse.json({ error: passwordUpdateError.message }, { status: 400 });
       }
-    } else {
+    } else if (encryptedPassword) {
+      // A hint update with no existing password row and no new password has
+      // nothing to attach the hint to — only insert when there's a password.
       const { error: passwordInsertError } = await supabase.from("passwords").insert({
         site_id: siteId,
         user_id: user.id,
         encrypted_password: encryptedPassword,
+        encrypted_hint: hasHintUpdate ? body.encryptedHint : null,
       });
 
       if (passwordInsertError) {

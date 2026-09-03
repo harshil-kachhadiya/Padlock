@@ -11,6 +11,7 @@ export type Settings = {
   reveal_password_default: boolean;
   expand_all_items_default: boolean;
   never_show_passwords: boolean;
+  hint_only_mode: boolean;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -19,6 +20,7 @@ const DEFAULT_SETTINGS: Settings = {
   reveal_password_default: false,
   expand_all_items_default: false,
   never_show_passwords: false,
+  hint_only_mode: false,
 };
 
 type SettingsContextValue = {

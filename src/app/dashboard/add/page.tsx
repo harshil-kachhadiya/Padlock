@@ -27,6 +27,7 @@ export default function AddEntryPage() {
   const [siteUrl, setSiteUrl] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [hint, setHint] = useState("");
   const [totpSecret, setTotpSecret] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -68,6 +69,7 @@ export default function AddEntryPage() {
       }
 
       const encryptedPassword = await encryptEntry(key, password);
+      const encryptedHint = hint ? await encryptEntry(key, hint) : null;
       const encryptedTotpSecret = totpSecret
         ? await encryptEntry(key, totpSecret.replace(/\s+/g, ""))
         : null;
@@ -83,6 +85,7 @@ export default function AddEntryPage() {
           siteUrl,
           username,
           encryptedPassword,
+          encryptedHint,
           encryptedTotpSecret,
         }),
       });
@@ -141,6 +144,15 @@ export default function AddEntryPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 revealDisabled={settings.never_show_passwords}
+              />
+
+              <Input
+                label="Hint (optional)"
+                type="text"
+                value={hint}
+                onChange={(e) => setHint(e.target.value)}
+                placeholder="e.g. name@123"
+                hint="Shown instead of the real password when autofill hint mode is on — never a substitute for a strong password."
               />
 
               <Input
