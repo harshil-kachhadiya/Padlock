@@ -1,5 +1,11 @@
 const app = document.getElementById("app");
 
+// Tracks which sites have already been auto-filled this popup session, so
+// re-rendering the vault list (after editing or deleting an entry, say)
+// doesn't re-trigger a fill the user didn't just ask for. Popups are
+// non-persistent in MV3 — this resets naturally every time the popup opens.
+const autoFilledSiteIds = new Set();
+
 function render(templateId) {
   const template = document.getElementById(templateId);
   app.replaceChildren(template.content.cloneNode(true));
@@ -272,6 +278,46 @@ async function handleUnlock(session, userRow) {
   }
 }
 
+// Shared by the manual "Autofill" button and the auto-fill-on-open path, so
+// hint gating and messaging stay in exactly one place.
+//
+// Hint mode never decrypts or sends the real password at all — only the
+// hint text goes to the content script, via a different message type
+// (PADLOCK_SHOW_HINT) than normal autofill (PADLOCK_AUTOFILL). That's a
+// deliberate second layer, not just a UI toggle: even a bug in the
+// hintOnlyMode check can't leak the real password through this path,
+// because this function never even decrypts it when useHint is true.
+async function performAutofill(site, activePassword, key, hintOnlyMode) {
+  const useHint = hintOnlyMode && Boolean(activePassword.encrypted_hint);
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+  if (useHint) {
+    const hintText = await decryptEntry(key, activePassword.encrypted_hint);
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      type: "PADLOCK_SHOW_HINT",
+      username: site.username,
+      hint: hintText,
+    });
+    return { status: "hint", filledUsername: Boolean(response?.filledUsername) };
+  }
+
+  const plaintext = await decryptEntry(key, activePassword.encrypted_password);
+  const response = await chrome.tabs.sendMessage(tab.id, {
+    type: "PADLOCK_AUTOFILL",
+    username: site.username,
+    password: plaintext,
+  });
+
+  if (response?.ok) {
+    return {
+      status: "filled",
+      filledUsername: response.filledUsername,
+      filledPassword: response.filledPassword,
+    };
+  }
+  return { status: "no-form" };
+}
+
 function buildEntryNode(site, activePassword, session, key, onChanged, hintOnlyMode, matchReason) {
   const entryTemplate = document.getElementById("tpl-entry");
   const node = entryTemplate.content.cloneNode(true);
@@ -306,30 +352,18 @@ function buildEntryNode(site, activePassword, session, key, onChanged, hintOnlyM
     button.textContent = "Filling…";
 
     try {
-      // Hint mode only takes over when the entry actually has a hint set —
-      // otherwise there'd be nothing to show the user and autofill would
-      // silently do less than expected.
-      const useHint = hintOnlyMode && Boolean(activePassword.encrypted_hint);
-      const plaintext = useHint
-        ? null
-        : await decryptEntry(key, activePassword.encrypted_password);
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      const result = await performAutofill(site, activePassword, key, hintOnlyMode);
 
-      const response = await chrome.tabs.sendMessage(tab.id, {
-        type: "PADLOCK_AUTOFILL",
-        username: site.username,
-        password: plaintext,
-      });
-
-      if (useHint) {
-        const hintText = await decryptEntry(key, activePassword.encrypted_hint);
-        const parts = response?.filledUsername ? ["username filled — "] : [];
-        showToast(`${parts.join("")}Hint: ${hintText}`, "info", null, 6000);
+      if (result.status === "hint") {
+        showToast(
+          result.filledUsername ? "Username filled — hint shown on the page" : "Hint shown on the page",
+          "info"
+        );
         button.textContent = "Hint shown";
-      } else if (response?.ok) {
+      } else if (result.status === "filled") {
         const parts = [];
-        if (response.filledUsername) parts.push("username");
-        if (response.filledPassword) parts.push("password");
+        if (result.filledUsername) parts.push("username");
+        if (result.filledPassword) parts.push("password");
         showToast(`Filled ${parts.join(" & ")} for ${site.site_name}`, "success");
         button.textContent = "Filled";
       } else {
@@ -426,6 +460,12 @@ async function showVault(session, key) {
     "hint_only_mode",
     false
   );
+  const autoFillSingleMatch = await fetchUserSetting(
+    session.access_token,
+    session.user.id,
+    "auto_fill_single_match",
+    false
+  );
 
   let allSites;
   try {
@@ -492,6 +532,38 @@ async function showVault(session, key) {
       const reason =
         siteHost && siteHost !== activeHost ? `Saved for ${siteHost} — same domain` : null;
       matchList.appendChild(buildEntryNode(site, activePassword, session, key, refresh, hintOnlyMode, reason));
+    }
+
+    // Only ever auto-triggers for an unambiguous single match — with 2+
+    // saved logins for a site there is no safe way to guess which one the
+    // user wants, so those always fall back to a manual click regardless
+    // of this setting.
+    if (autoFillSingleMatch && matching.length === 1 && !autoFilledSiteIds.has(matching[0].site.id)) {
+      const { site, activePassword } = matching[0];
+      autoFilledSiteIds.add(site.id);
+
+      performAutofill(site, activePassword, key, hintOnlyMode)
+        .then((result) => {
+          if (result.status === "hint") {
+            showToast(
+              result.filledUsername
+                ? `Auto — username filled, hint shown for ${site.site_name}`
+                : `Auto — hint shown for ${site.site_name}`,
+              "info"
+            );
+          } else if (result.status === "filled") {
+            const parts = [];
+            if (result.filledUsername) parts.push("username");
+            if (result.filledPassword) parts.push("password");
+            showToast(`Auto-filled ${parts.join(" & ")} for ${site.site_name}`, "success");
+          }
+          // "no-form" is silent here — the popup just opened, nothing the
+          // user clicked, so surfacing an error would be more surprising
+          // than helpful.
+        })
+        .catch(() => {
+          /* silent — same reasoning as the no-form case above */
+        });
     }
   }
 

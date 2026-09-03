@@ -12,6 +12,7 @@ export type Settings = {
   expand_all_items_default: boolean;
   never_show_passwords: boolean;
   hint_only_mode: boolean;
+  auto_fill_single_match: boolean;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -21,6 +22,7 @@ const DEFAULT_SETTINGS: Settings = {
   expand_all_items_default: false,
   never_show_passwords: false,
   hint_only_mode: false,
+  auto_fill_single_match: false,
 };
 
 type SettingsContextValue = {

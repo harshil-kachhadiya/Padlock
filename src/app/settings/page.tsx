@@ -410,6 +410,25 @@ export default function SettingsPage() {
                 </span>
               </span>
             </label>
+
+            <label className="mt-4 flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={settings.auto_fill_single_match}
+                onChange={(e) => updateSetting("auto_fill_single_match", e.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Auto-fill when only one login is saved
+                </span>
+                <span className="block text-xs text-foreground-muted">
+                  If a site has exactly one saved entry, the extension fills it the moment you
+                  open the popup — no click needed. Sites with more than one saved login always
+                  still require choosing which one.
+                </span>
+              </span>
+            </label>
           </CardBody>
         </Card>
 

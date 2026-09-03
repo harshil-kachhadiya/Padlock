@@ -67,6 +67,27 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  if (message?.type === "PADLOCK_SHOW_HINT") {
+    // Hint-only mode: the real password is deliberately never sent to this
+    // content script at all — only the hint text is, so there is nothing
+    // here that could accidentally end up filled into the page.
+    const passwordField = findPasswordField();
+    const usernameField = findUsernameField(passwordField);
+
+    let filledUsername = false;
+    if (usernameField && message.username) {
+      setNativeValue(usernameField, message.username);
+      filledUsername = true;
+    }
+
+    if (passwordField && message.hint) {
+      showHintBadge(passwordField, message.hint);
+    }
+
+    sendResponse({ ok: Boolean(passwordField), filledUsername });
+    return true;
+  }
+
   if (message?.type === "PADLOCK_CAPTURE") {
     const passwordField = findPasswordField();
     const usernameField = findUsernameField(passwordField);
@@ -248,6 +269,81 @@ function positionDropdown(hostEl, fieldEl) {
   hostEl.style.left = `${rect.left + window.scrollX}px`;
   hostEl.style.width = `${Math.max(rect.width, 220)}px`;
 }
+
+// --- Hint badge (hint-only autofill mode) ----------------------------------
+// Shows the entry's hint directly under the real page's password field —
+// not in the extension popup — since that's the field the user actually
+// needs to fill in by hand when hint mode withholds the real password.
+
+let hintHost = null;
+let hintDismissTimer = null;
+
+function removeHintBadge() {
+  if (hintHost) hintHost.remove();
+  hintHost = null;
+  clearTimeout(hintDismissTimer);
+}
+
+function showHintBadge(fieldEl, hintText) {
+  removeHintBadge();
+
+  const host = document.createElement("div");
+  host.style.cssText = "all:initial;position:absolute;z-index:2147483647;display:block;";
+  document.documentElement.appendChild(host);
+  positionDropdown(host, fieldEl);
+  hintHost = host;
+
+  const shadow = host.attachShadow({ mode: "closed" });
+  shadow.innerHTML = `
+    <style>
+      .badge {
+        font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+        background: #0f2d52;
+        color: #ffffff;
+        border-top: 3px solid #ffbe2e;
+        border-radius: 4px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+        padding: 8px 12px;
+        max-width: 280px;
+        word-break: break-word;
+      }
+      .label {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #ffbe2e;
+        margin-bottom: 2px;
+      }
+      .value { font-size: 13px; }
+    </style>
+    <div class="badge">
+      <span class="label">Padlock hint</span>
+      <span class="value"></span>
+    </div>
+  `;
+  // Set via textContent, not template interpolation, so a hint containing
+  // HTML-like characters can't inject markup into the page.
+  shadow.querySelector(".value").textContent = hintText;
+
+  hintDismissTimer = setTimeout(removeHintBadge, 8000);
+}
+
+window.addEventListener(
+  "scroll",
+  () => {
+    // The dropdown's own reposition-on-scroll (below) only tracks
+    // dropdownHost/dropdownField — repeated here so the hint badge tracks
+    // the field too instead of drifting away from it.
+    if (hintHost) removeHintBadge();
+  },
+  true
+);
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") removeHintBadge();
+});
 
 function isSuggestableField(el) {
   if (!(el instanceof HTMLInputElement)) return false;
