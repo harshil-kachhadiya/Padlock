@@ -163,7 +163,24 @@ async function bootInner() {
     return;
   }
 
-  const cachedKey = await loadVaultKey();
+  let cachedKey = await loadVaultKey();
+
+  if (cachedKey) {
+    // chrome.storage.session has no concept of "this key is for salt X" —
+    // it just remembers whatever CryptoKey was cached, indefinitely, across
+    // every popup open until the browser fully closes. If the master
+    // password was ever changed (on the website or another device) after
+    // this key was cached, every decrypt using it fails with a
+    // DOMException: OperationError that gives no hint why — it looks
+    // exactly like corrupted data instead of "this key is simply wrong."
+    // Verifying against the current verifier here, every boot, is the fix:
+    // catch a stale key before it silently breaks every entry.
+    const stillValid = await checkVerifier(cachedKey, userRow.verifier);
+    if (!stillValid) {
+      await clearVaultKey();
+      cachedKey = null;
+    }
+  }
 
   if (!cachedKey) {
     render("tpl-unlock");
