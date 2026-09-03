@@ -506,6 +506,7 @@ body {
   background: var(--red);
 }
 
+
     </style>
   </head>
   <body>
@@ -516,22 +517,22 @@ body {
         <div class="subtitle">Secure Credential Vault</div>
       </div>
     </header>
-
     <main class="app">
+
       <div class="panel">
-        <h1>Add entry</h1>
-        <input type="text" class="input" value="GitHub" />
-        <input type="text" class="input" value="github.com" />
-        <input type="text" class="input" value="harshil.dev@gmail.com" />
+        <h1 id="entry-form-title">Add entry</h1>
+        <input type="text" class="input" value="Code Hosting" />
+        <input type="text" class="input" value="code.example.com" />
+        <input type="text" class="input" value="joe@example.com" />
 
         <div class="password-row">
           <input type="text" class="input input-inline" value="qX8!vR2kLp9$mZ4t" />
-          <button type="button" class="icon-btn active" aria-label="Hide password">🙈</button>
+          <button type="button" class="icon-btn">&#128065;</button>
         </div>
 
         <div class="strength-meter">
-          <div class="strength-track"><span style="width: 100%; background: var(--green);"></span></div>
-          <span class="strength-label" style="color: var(--green);">Strong</span>
+          <div class="strength-track"><span style="width:100%;background:var(--green);"></span></div>
+          <span class="strength-label" style="color:var(--green);">Strong</span>
         </div>
 
         <details class="gen-section" open>
