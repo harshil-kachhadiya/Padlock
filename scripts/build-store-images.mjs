@@ -83,7 +83,9 @@ const SHOTS = [
     kicker: "ONE CLICK TO FILL",
     head: ["Your logins, right where", "you need them"],
     sub: "Padlock surfaces the entries saved for the site you're on, with everything else one click away.",
-    bullets: ["Domain-matched suggestions", "Autofill, copy, edit, delete", "Search as your vault grows"],
+    // Every bullet must name something the popup actually does — the popup has
+    // no search box, so an earlier "Search as your vault grows" claim was cut.
+    bullets: ["Domain-matched suggestions", "Autofill, copy, edit, delete", "Add new logins from the popup"],
   },
   {
     src: "generator.html",
