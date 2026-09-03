@@ -8,10 +8,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing authorization header" }, { status: 401 });
   }
 
-  const { salt, verifier } = await request.json();
+  const { salt, verifier, pbkdf2Iterations } = await request.json();
 
-  if (!salt || !verifier) {
-    return NextResponse.json({ error: "Missing salt or verifier" }, { status: 400 });
+  if (!salt || !verifier || !pbkdf2Iterations) {
+    return NextResponse.json(
+      { error: "Missing salt, verifier, or pbkdf2Iterations" },
+      { status: 400 }
+    );
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -36,6 +39,7 @@ export async function POST(request: NextRequest) {
     oauth_provider: "google",
     salt,
     verifier,
+    pbkdf2_iterations: pbkdf2Iterations,
   });
 
   if (insertError) {

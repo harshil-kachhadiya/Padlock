@@ -239,7 +239,9 @@ async function handleUnlock(session, userRow) {
   unlockBtn.textContent = "Unlocking…";
 
   try {
-    const key = await deriveKey(password, userRow.salt);
+    // Falls back to the legacy default for any row from before this column
+    // existed — see supabase/migrations/0010_pbkdf2_iterations.sql.
+    const key = await deriveKey(password, userRow.salt, userRow.pbkdf2_iterations ?? 250_000);
     const valid = await checkVerifier(key, userRow.verifier);
 
     if (!valid) {

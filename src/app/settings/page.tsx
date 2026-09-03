@@ -11,6 +11,7 @@ import {
   encryptEntry,
   generateSalt,
   createVerifier,
+  DEFAULT_PBKDF2_ITERATIONS,
   type EncryptedPayload,
 } from "@/lib/crypto";
 import { useKey } from "@/lib/keyContext";
@@ -105,7 +106,7 @@ export default function SettingsPage() {
       setProgress("Verifying current master password…");
       const { data: userRow, error: userRowError } = await supabase
         .from("users")
-        .select("salt, verifier")
+        .select("salt, verifier, pbkdf2_iterations")
         .eq("id", user.id)
         .eq("deleted", false)
         .single();
@@ -117,7 +118,10 @@ export default function SettingsPage() {
         return;
       }
 
-      const oldKey = await deriveKey(currentPassword, userRow.salt as number[]);
+      // Falls back to the legacy default for any row from before this column
+      // existed — see supabase/migrations/0010_pbkdf2_iterations.sql.
+      const oldIterations = (userRow.pbkdf2_iterations as number | null) ?? 250_000;
+      const oldKey = await deriveKey(currentPassword, userRow.salt as number[], oldIterations);
       const isValid = await checkVerifier(oldKey, userRow.verifier as EncryptedPayload);
 
       if (!isValid) {
@@ -174,7 +178,12 @@ export default function SettingsPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ salt: newSalt, verifier: newVerifier, updates }),
+        body: JSON.stringify({
+          salt: newSalt,
+          verifier: newVerifier,
+          pbkdf2Iterations: DEFAULT_PBKDF2_ITERATIONS,
+          updates,
+        }),
       });
 
       if (!response.ok) {

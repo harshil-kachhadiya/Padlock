@@ -1,6 +1,10 @@
 // Zero-knowledge crypto helpers — ported from src/lib/crypto.ts. Native Web Crypto API only.
 
-const PBKDF2_ITERATIONS = 250_000;
+// Legacy fallback only — the extension never creates a vault itself (that
+// happens on the website), so it always derives using the iteration count
+// fetched from the user's row. This is used only if that column is somehow
+// missing, matching the default in supabaseRest.js.
+const LEGACY_PBKDF2_ITERATIONS = 250_000;
 const VERIFIER_STRING = "PADLOCK_VERIFIER";
 
 function generateSalt() {
@@ -8,7 +12,7 @@ function generateSalt() {
   return Array.from(salt);
 }
 
-async function deriveKey(masterPassword, salt) {
+async function deriveKey(masterPassword, salt, iterations = LEGACY_PBKDF2_ITERATIONS) {
   const encoder = new TextEncoder();
   const baseKey = await crypto.subtle.importKey(
     "raw",
@@ -22,7 +26,7 @@ async function deriveKey(masterPassword, salt) {
     {
       name: "PBKDF2",
       salt: new Uint8Array(salt),
-      iterations: PBKDF2_ITERATIONS,
+      iterations,
       hash: "SHA-256",
     },
     baseKey,

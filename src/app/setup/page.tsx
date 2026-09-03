@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { generateSalt, deriveKey, createVerifier } from "@/lib/crypto";
+import { generateSalt, deriveKey, createVerifier, DEFAULT_PBKDF2_ITERATIONS } from "@/lib/crypto";
 import { useKey } from "@/lib/keyContext";
 import {
   Alert,
@@ -88,7 +88,7 @@ export default function SetupPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ salt, verifier }),
+        body: JSON.stringify({ salt, verifier, pbkdf2Iterations: DEFAULT_PBKDF2_ITERATIONS }),
       });
 
       if (!response.ok) {

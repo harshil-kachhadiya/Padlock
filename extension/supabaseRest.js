@@ -9,7 +9,7 @@ function restHeaders(accessToken) {
 }
 
 async function fetchUserRow(accessToken, userId) {
-  const url = `${PADLOCK_CONFIG.SUPABASE_URL}/rest/v1/users?id=eq.${userId}&deleted=eq.false&select=salt,verifier`;
+  const url = `${PADLOCK_CONFIG.SUPABASE_URL}/rest/v1/users?id=eq.${userId}&deleted=eq.false&select=salt,verifier,pbkdf2_iterations`;
   const res = await fetch(url, { headers: restHeaders(accessToken) });
   if (!res.ok) throw new Error("Failed to load vault.");
   const rows = await res.json();

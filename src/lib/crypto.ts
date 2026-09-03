@@ -1,6 +1,14 @@
 // Zero-knowledge crypto helpers. Native Web Crypto API only — no external crypto packages.
 
-const PBKDF2_ITERATIONS = 250_000;
+/**
+ * Default iteration count for newly created vaults and master-password
+ * changes. Existing users keep whatever count is stored in their `users` row
+ * (see supabase/migrations/0010_pbkdf2_iterations.sql) until they change
+ * their master password — raising this constant does not, by itself, affect
+ * anyone who already has a vault.
+ */
+export const DEFAULT_PBKDF2_ITERATIONS = 600_000;
+
 const VERIFIER_STRING = "PADLOCK_VERIFIER";
 
 export type EncryptedPayload = {
@@ -15,7 +23,8 @@ export function generateSalt(): number[] {
 
 export async function deriveKey(
   masterPassword: string,
-  salt: number[]
+  salt: number[],
+  iterations: number = DEFAULT_PBKDF2_ITERATIONS
 ): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const baseKey = await crypto.subtle.importKey(
@@ -30,7 +39,7 @@ export async function deriveKey(
     {
       name: "PBKDF2",
       salt: new Uint8Array(salt),
-      iterations: PBKDF2_ITERATIONS,
+      iterations,
       hash: "SHA-256",
     },
     baseKey,

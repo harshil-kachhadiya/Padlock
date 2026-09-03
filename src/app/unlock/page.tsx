@@ -33,6 +33,7 @@ export default function UnlockPage() {
   const [submitting, setSubmitting] = useState(false);
   const [salt, setSalt] = useState<number[] | null>(null);
   const [verifier, setVerifier] = useState<EncryptedPayload | null>(null);
+  const [iterations, setIterations] = useState<number | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [lockedSeconds, setLockedSeconds] = useState(0);
 
@@ -48,7 +49,7 @@ export default function UnlockPage() {
 
       const { data: row, error: fetchError } = await supabase
         .from("users")
-        .select("salt, verifier")
+        .select("salt, verifier, pbkdf2_iterations")
         .eq("id", user.id)
         .eq("deleted", false)
         .maybeSingle();
@@ -61,6 +62,9 @@ export default function UnlockPage() {
       setUserId(user.id);
       setSalt(row.salt as number[]);
       setVerifier(row.verifier as EncryptedPayload);
+      // Falls back to the legacy default for any row from before this column
+      // existed — see supabase/migrations/0010_pbkdf2_iterations.sql.
+      setIterations((row.pbkdf2_iterations as number | null) ?? 250_000);
 
       const lockout = loadLockoutState(user.id);
       if (isLockedOut(lockout)) {
@@ -85,12 +89,12 @@ export default function UnlockPage() {
     e.preventDefault();
     setError(null);
 
-    if (!salt || !verifier || !userId || lockedSeconds > 0) return;
+    if (!salt || !verifier || !userId || !iterations || lockedSeconds > 0) return;
 
     setSubmitting(true);
 
     try {
-      const derivedKey = await deriveKey(password, salt);
+      const derivedKey = await deriveKey(password, salt, iterations);
       const isValid = await checkVerifier(derivedKey, verifier);
 
       if (!isValid) {

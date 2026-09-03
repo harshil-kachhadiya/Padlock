@@ -8,10 +8,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing authorization header" }, { status: 401 });
   }
 
-  const { salt, verifier, updates } = await request.json();
+  const { salt, verifier, pbkdf2Iterations, updates } = await request.json();
 
-  if (!salt || !verifier || !Array.isArray(updates)) {
-    return NextResponse.json({ error: "Missing salt, verifier, or updates" }, { status: 400 });
+  if (!salt || !verifier || !pbkdf2Iterations || !Array.isArray(updates)) {
+    return NextResponse.json(
+      { error: "Missing salt, verifier, pbkdf2Iterations, or updates" },
+      { status: 400 }
+    );
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -33,6 +36,7 @@ export async function POST(request: NextRequest) {
   const { error: rpcError } = await supabase.rpc("change_master_password", {
     p_salt: salt,
     p_verifier: verifier,
+    p_pbkdf2_iterations: pbkdf2Iterations,
     p_updates: updates,
   });
 
