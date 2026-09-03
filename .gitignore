@@ -43,3 +43,12 @@ next-env.d.ts
 
 # Chrome Web Store upload artifact
 extension.zip
+
+# Promo video build artifacts — frames and intermediates are large and
+# regenerable; the final MP4 lives on YouTube, not in git.
+video/frames/
+video/audio/
+video/src/
+video/*.mp4
+video/contact-sheet.png
+video/verify-cta.png
