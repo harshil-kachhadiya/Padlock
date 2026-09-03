@@ -138,6 +138,27 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
     if (!activePassword) return;
 
+    // This is a second autofill trigger alongside the popup's button — it
+    // needs the same hint gating, or hint-only mode would be trivially
+    // bypassed by right-clicking instead of opening the popup.
+    const hintOnlyMode = await fetchUserSetting(
+      session.access_token,
+      session.user.id,
+      "hint_only_mode",
+      false
+    );
+    const useHint = hintOnlyMode && Boolean(activePassword.encrypted_hint);
+
+    if (useHint) {
+      const hintText = await decryptEntry(vaultKey, activePassword.encrypted_hint);
+      chrome.tabs.sendMessage(tab.id, {
+        type: "PADLOCK_SHOW_HINT",
+        username: site.username,
+        hint: hintText,
+      });
+      return;
+    }
+
     const plaintext = await decryptEntry(vaultKey, activePassword.encrypted_password);
 
     chrome.tabs.sendMessage(tab.id, {

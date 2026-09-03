@@ -28,7 +28,10 @@ const DEFAULT_SETTINGS: Settings = {
 type SettingsContextValue = {
   settings: Settings;
   loaded: boolean;
-  updateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => void;
+  // Resolves false (rather than throwing) on failure — the setting was
+  // already rolled back in state by then, so callers just need to know
+  // whether to tell the user it didn't save.
+  updateSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => Promise<boolean>;
 };
 
 const SettingsContext = createContext<SettingsContextValue | undefined>(undefined);
@@ -74,14 +77,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function updateSetting<K extends keyof Settings>(key: K, value: Settings[K]) {
+    const previous = settings[key];
     setSettings((prev) => ({ ...prev, [key]: value }));
 
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData.session;
-    if (!session) return;
+    if (!session) return false;
 
     try {
-      await fetch("/api/settings", {
+      const res = await fetch("/api/settings", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -89,8 +93,21 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         },
         body: JSON.stringify({ key, value }),
       });
+
+      if (!res.ok) {
+        // A silent failure here previously meant the UI could show a
+        // setting as "on" while the row was never written — most commonly
+        // because setting_key has a foreign key against setting_items, and
+        // a not-yet-applied migration means that row doesn't exist yet.
+        // Roll back so the UI reflects what's actually saved.
+        setSettings((prev) => ({ ...prev, [key]: previous }));
+        return false;
+      }
+
+      return true;
     } catch {
-      // Best-effort persistence — the in-memory value is already applied.
+      setSettings((prev) => ({ ...prev, [key]: previous }));
+      return false;
     }
   }
 

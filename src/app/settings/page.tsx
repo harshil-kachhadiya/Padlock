@@ -56,6 +56,20 @@ export default function SettingsPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const [settingsSaveError, setSettingsSaveError] = useState<string | null>(null);
+
+  async function handleUpdateSetting<K extends keyof typeof settings>(
+    key: K,
+    value: (typeof settings)[K]
+  ) {
+    const ok = await updateSetting(key, value);
+    setSettingsSaveError(
+      ok
+        ? null
+        : "Couldn't save that setting — it didn't take effect. This usually means a database migration hasn't been run yet; try again after that's done, or contact support if it keeps happening."
+    );
+  }
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
@@ -263,6 +277,12 @@ export default function SettingsPage() {
           Manage your master password and vault preferences.
         </p>
 
+        {settingsSaveError && (
+          <div className="mt-4">
+            <Alert variant="error">{settingsSaveError}</Alert>
+          </div>
+        )}
+
         <Card className="mt-6">
           <CardHeader>
             <h2 className="text-sm font-bold uppercase tracking-wide text-foreground-muted">
@@ -328,7 +348,7 @@ export default function SettingsPage() {
                   variant={autoLockMs === option.ms ? "primary" : "secondary"}
                   onClick={() => {
                     setAutoLockMs(option.ms);
-                    updateSetting("auto_lock_ms", option.ms);
+                    handleUpdateSetting("auto_lock_ms", option.ms);
                   }}
                   className="px-4 py-2 text-xs"
                 >
@@ -356,7 +376,7 @@ export default function SettingsPage() {
                   variant={theme === option ? "primary" : "secondary"}
                   onClick={() => {
                     setTheme(option);
-                    updateSetting("theme", option);
+                    handleUpdateSetting("theme", option);
                   }}
                   className="px-4 py-2 text-xs capitalize"
                 >
@@ -377,7 +397,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 className="mt-0.5"
                 checked={settings.never_show_passwords}
-                onChange={(e) => updateSetting("never_show_passwords", e.target.checked)}
+                onChange={(e) => handleUpdateSetting("never_show_passwords", e.target.checked)}
               />
               <span>
                 <span className="block text-sm font-medium text-foreground">
@@ -397,7 +417,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 className="mt-0.5"
                 checked={settings.hint_only_mode}
-                onChange={(e) => updateSetting("hint_only_mode", e.target.checked)}
+                onChange={(e) => handleUpdateSetting("hint_only_mode", e.target.checked)}
               />
               <span>
                 <span className="block text-sm font-medium text-foreground">
@@ -416,7 +436,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 className="mt-0.5"
                 checked={settings.auto_fill_single_match}
-                onChange={(e) => updateSetting("auto_fill_single_match", e.target.checked)}
+                onChange={(e) => handleUpdateSetting("auto_fill_single_match", e.target.checked)}
               />
               <span>
                 <span className="block text-sm font-medium text-foreground">
@@ -449,7 +469,7 @@ export default function SettingsPage() {
                 className="mt-0.5"
                 checked={settings.reveal_password_default}
                 disabled={settings.never_show_passwords}
-                onChange={(e) => updateSetting("reveal_password_default", e.target.checked)}
+                onChange={(e) => handleUpdateSetting("reveal_password_default", e.target.checked)}
               />
               <span>
                 <span className="block text-sm font-medium text-foreground">
@@ -468,7 +488,7 @@ export default function SettingsPage() {
                 type="checkbox"
                 className="mt-0.5"
                 checked={settings.expand_all_items_default}
-                onChange={(e) => updateSetting("expand_all_items_default", e.target.checked)}
+                onChange={(e) => handleUpdateSetting("expand_all_items_default", e.target.checked)}
               />
               <span>
                 <span className="block text-sm font-medium text-foreground">
