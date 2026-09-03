@@ -61,7 +61,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     sendResponse({
       ok: filled > 0,
       filledUsername: Boolean(usernameField && message.username),
-      filledPassword: Boolean(passwordField),
+      filledPassword: Boolean(passwordField && message.password),
     });
 
     return true;
