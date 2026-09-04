@@ -705,12 +705,34 @@ async function showEntryForm(session, key, existing) {
     nameInput.value = existing.site.site_name;
     urlInput.value = existing.site.site_url;
     usernameInput.value = existing.site.username || "";
-    originalPassword = await decryptEntry(key, existing.activePassword.encrypted_password);
-    passwordInput.value = originalPassword;
+
+    // An entry whose ciphertext predates a master password change (or any
+    // other key mismatch) throws here. Previously this was unguarded, so
+    // the throw aborted showEntryForm() before it ever reached the
+    // on("save-entry")/on("cancel-entry") registrations further down —
+    // the form rendered, but every button on it was silently dead, with no
+    // indication why. Catching it here means the form always finishes
+    // wiring up regardless, and the user gets a specific, actionable path
+    // out: type the real password and save over the broken ciphertext.
+    try {
+      originalPassword = await decryptEntry(key, existing.activePassword.encrypted_password);
+      passwordInput.value = originalPassword;
+    } catch (err) {
+      console.error("Padlock: could not decrypt this entry's saved password", err);
+      errorEl.textContent =
+        "This entry's saved password can't be decrypted — it likely predates a master password change. Type the real password below and save to fix it.";
+      errorEl.hidden = false;
+    }
 
     if (existing.activePassword.encrypted_hint) {
-      originalHint = await decryptEntry(key, existing.activePassword.encrypted_hint);
-      hintInput.value = originalHint;
+      try {
+        originalHint = await decryptEntry(key, existing.activePassword.encrypted_hint);
+        hintInput.value = originalHint;
+      } catch (err) {
+        // Non-fatal: the hint is optional, so leave it blank rather than
+        // block the whole form the way the unguarded password decrypt did.
+        console.error("Padlock: could not decrypt this entry's saved hint", err);
+      }
     }
   } else {
     const tab = await getActiveTab();
