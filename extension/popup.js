@@ -169,7 +169,8 @@ async function bootInner() {
     return;
   }
 
-  applyTheme(await fetchUserSetting(session.access_token, session.user.id, "theme", "light"));
+  const savedTheme = await fetchUserSetting(session.access_token, session.user.id, "theme", "system");
+  applyTheme(savedTheme);
   if (headerActions) headerActions.hidden = false;
   bindHeaderActions(session);
 
@@ -316,21 +317,33 @@ async function handleUnlock(session, userRow) {
 let systemThemeQuery;
 
 function bindHeaderActions(session) {
-  document.querySelectorAll(".header [data-theme]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const theme = button.dataset.theme;
-      applyTheme(theme);
-      try {
-        await updateUserSetting(session.access_token, session.user.id, "theme", theme);
-      } catch (error) {
-        showToast(error.message, "error");
-      }
-    });
+  document.querySelector('.header [data-action="toggle-theme"]').addEventListener("click", async () => {
+    const nextTheme = document.body.dataset.theme === "dark" ? "light" : "dark";
+    applyTheme(nextTheme);
+    try {
+      await updateUserSetting(session.access_token, session.user.id, "theme", nextTheme);
+    } catch (error) {
+      showToast(error.message, "error");
+    }
   });
 
   document.querySelector('.header [data-action="lock"]').addEventListener("click", async () => {
     await clearVaultKey();
     await boot();
+  });
+
+  const menuButton = document.querySelector('[data-action="open-menu"]');
+  const menu = document.querySelector("#header-menu");
+  menuButton.addEventListener("click", () => {
+    menu.hidden = !menu.hidden;
+    menuButton.setAttribute("aria-expanded", String(!menu.hidden));
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".header-menu-wrap")) {
+      menu.hidden = true;
+      menuButton.setAttribute("aria-expanded", "false");
+    }
   });
 }
 
@@ -375,13 +388,10 @@ async function showSettings(session, key) {
       "show_all_items",
       false
     ),
-    theme: await fetchUserSetting(session.access_token, session.user.id, "theme", "light"),
   };
 
   lockInput.checked = Boolean(values.lock_chrome_by_default);
   showAllInput.checked = Boolean(values.show_all_items);
-  applyTheme(values.theme);
-
   async function save(keyName, value) {
     try {
       await updateUserSetting(session.access_token, session.user.id, keyName, value);
@@ -396,14 +406,6 @@ async function showSettings(session, key) {
     save("lock_chrome_by_default", lockInput.checked)
   );
   showAllInput.addEventListener("change", () => save("show_all_items", showAllInput.checked));
-
-  app.querySelectorAll("[data-theme]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const theme = button.dataset.theme;
-      applyTheme(theme);
-      save("theme", theme);
-    });
-  });
 
   on("back-to-vault", () => showVault(session, key));
 }
@@ -597,6 +599,24 @@ async function showVault(session, key) {
   on("lock", async () => {
     await clearVaultKey();
     await boot();
+  });
+  const menu = document.querySelector("#header-menu");
+  const menuButton = document.querySelector('[data-action="open-menu"]');
+  const closeMenu = () => {
+    menu.hidden = true;
+    menuButton.setAttribute("aria-expanded", "false");
+  };
+  document.querySelector('[data-menu-action="profile"]').addEventListener("click", () => {
+    closeMenu();
+    chrome.tabs.create({ url: `${PADLOCK_CONFIG.WEBSITE_URL}/profile` });
+  });
+  document.querySelector('[data-menu-action="settings"]').addEventListener("click", () => {
+    closeMenu();
+    showSettings(session, key);
+  });
+  document.querySelector('[data-menu-action="sign-out"]').addEventListener("click", () => {
+    closeMenu();
+    handleSignOut();
   });
   on("add-entry", () => showEntryForm(session, key, null));
 

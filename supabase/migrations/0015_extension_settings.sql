@@ -23,3 +23,7 @@ set
   label = 'Lock Padlock when Chrome starts',
   description = 'Require the Padlock master password again after Chrome is closed and reopened. Chrome itself is not locked.'
 where key = 'lock_chrome_by_default';
+
+update public.setting_items
+set default_value = '"system"'
+where key = 'theme';

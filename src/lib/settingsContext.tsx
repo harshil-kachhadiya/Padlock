@@ -6,7 +6,7 @@ import { useTheme } from "./themeContext";
 import { useKey } from "./keyContext";
 
 export type Settings = {
-  theme: "light" | "dark";
+  theme: "light" | "dark" | "system";
   auto_lock_ms: number;
   reveal_password_default: boolean;
   expand_all_items_default: boolean;
@@ -18,7 +18,7 @@ export type Settings = {
 };
 
 const DEFAULT_SETTINGS: Settings = {
-  theme: "light",
+  theme: "system",
   auto_lock_ms: 5 * 60 * 1000,
   reveal_password_default: false,
   expand_all_items_default: false,

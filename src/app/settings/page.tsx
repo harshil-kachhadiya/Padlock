@@ -15,7 +15,6 @@ import {
   type EncryptedPayload,
 } from "@/lib/crypto";
 import { useKey } from "@/lib/keyContext";
-import { useTheme } from "@/lib/themeContext";
 import { useSettings } from "@/lib/settingsContext";
 import {
   Alert,
@@ -38,7 +37,6 @@ const AUTO_LOCK_OPTIONS = [
 export default function SettingsPage() {
   const router = useRouter();
   const { setKey, clearKey, autoLockMs, setAutoLockMs } = useKey();
-  const { theme, setTheme } = useTheme();
   const { settings, updateSetting } = useSettings();
 
   const [user, setUser] = useState<User | null>(null);
@@ -353,34 +351,6 @@ export default function SettingsPage() {
                   className="px-4 py-2 text-xs"
                 >
                   {option.label}
-                </Button>
-              ))}
-            </div>
-          </CardBody>
-        </Card>
-
-        <Card className="mt-6">
-          <CardHeader>
-            <h2 className="text-sm font-bold uppercase tracking-wide text-foreground-muted">
-              Appearance
-            </h2>
-          </CardHeader>
-          <CardBody>
-            <p className="mb-4 text-xs leading-relaxed text-foreground-muted">
-              Applies immediately and syncs across your devices.
-            </p>
-            <div className="flex gap-2">
-              {(["light", "dark"] as const).map((option) => (
-                <Button
-                  key={option}
-                  variant={theme === option ? "primary" : "secondary"}
-                  onClick={() => {
-                    setTheme(option);
-                    handleUpdateSetting("theme", option);
-                  }}
-                  className="px-4 py-2 text-xs capitalize"
-                >
-                  {option}
                 </Button>
               ))}
             </div>
