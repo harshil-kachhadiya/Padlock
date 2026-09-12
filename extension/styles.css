@@ -12,6 +12,16 @@
   --amber: #b7791f;
 }
 
+body[data-theme="dark"] {
+  --border: #3b4654;
+  --bg: #111827;
+  --surface: #1f2937;
+  --text: #f3f4f6;
+  --text-muted: #b8c1cc;
+  --navy-800: #6b9bd1;
+  --navy-900: #081a31;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -253,11 +263,43 @@ body {
   font-size: 11px;
 }
 
+.setting-choice-row {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0 14px;
+}
+
+.setting-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+
+.setting-toggle strong,
+.setting-toggle small {
+  display: block;
+}
+
+.setting-toggle small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
 .vault-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
+}
+
+.vault-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .vault-header h1 {

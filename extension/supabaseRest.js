@@ -142,3 +142,35 @@ async function fetchUserSetting(accessToken, userId, key, defaultValue) {
     return defaultValue;
   }
 }
+
+async function updateUserSetting(accessToken, userId, key, value) {
+  const url =
+    `${PADLOCK_CONFIG.SUPABASE_URL}/rest/v1/user_settings` +
+    `?on_conflict=user_id,setting_key`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...restHeaders(accessToken),
+      Prefer: "resolution=merge-duplicates,return=minimal",
+    },
+    body: JSON.stringify({
+      user_id: userId,
+      setting_key: key,
+      value,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!res.ok) {
+    let detail = "Failed to save setting.";
+    try {
+      const body = await res.json();
+      if (body.message || body.details || body.hint) {
+        detail = [body.message, body.details, body.hint].filter(Boolean).join(" ");
+      }
+    } catch {
+      // Keep the generic message if the server did not return JSON.
+    }
+    throw new Error(detail);
+  }
+}

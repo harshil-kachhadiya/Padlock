@@ -153,6 +153,8 @@ async function bootInner() {
     return;
   }
 
+  applyTheme(await fetchUserSetting(session.access_token, session.user.id, "theme", "light"));
+
   renderLoading("Loading your account…");
   const userRow = await fetchUserRow(session.access_token, session.user.id);
 
@@ -166,10 +168,8 @@ async function bootInner() {
   let cachedKey = await loadVaultKey();
 
   if (cachedKey) {
-    // chrome.storage.session has no concept of "this key is for salt X" —
-    // it just remembers whatever CryptoKey was cached, indefinitely, across
-    // every popup open until the browser fully closes. If the master
-    // password was ever changed (on the website or another device) after
+    // The cached raw key has no associated salt or verifier version. If the
+    // master password was changed on the website or another device after
     // this key was cached, every decrypt using it fails with a
     // DOMException: OperationError that gives no hint why — it looks
     // exactly like corrupted data instead of "this key is simply wrong."
@@ -293,6 +293,82 @@ async function handleUnlock(session, userRow) {
     unlockBtn.disabled = false;
     unlockBtn.textContent = "Unlock";
   }
+}
+
+let systemThemeQuery;
+
+function applyTheme(theme) {
+  if (systemThemeQuery) {
+    systemThemeQuery.removeEventListener("change", systemThemeQuery.listener);
+    systemThemeQuery = null;
+  }
+
+  const setResolvedTheme = (resolvedTheme) => {
+    document.body.dataset.theme = resolvedTheme === "dark" ? "dark" : "light";
+  };
+
+  if (theme === "system") {
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
+    query.listener = (event) => setResolvedTheme(event.matches ? "dark" : "light");
+    query.addEventListener("change", query.listener);
+    systemThemeQuery = query;
+    setResolvedTheme(query.matches ? "dark" : "light");
+    return;
+  }
+
+  setResolvedTheme(theme);
+}
+
+async function showSettings(session, key) {
+  render("tpl-settings");
+
+  const errorEl = app.querySelector("#settings-error");
+  const lockInput = app.querySelector("#setting-lock-chrome");
+  const showAllInput = app.querySelector("#setting-show-all-items");
+  const values = {
+    lock_chrome_by_default: await fetchUserSetting(
+      session.access_token,
+      session.user.id,
+      "lock_chrome_by_default",
+      false
+    ),
+    show_all_items: await fetchUserSetting(
+      session.access_token,
+      session.user.id,
+      "show_all_items",
+      false
+    ),
+    theme: await fetchUserSetting(session.access_token, session.user.id, "theme", "light"),
+  };
+
+  lockInput.checked = Boolean(values.lock_chrome_by_default);
+  showAllInput.checked = Boolean(values.show_all_items);
+  applyTheme(values.theme);
+
+  async function save(keyName, value) {
+    try {
+      await updateUserSetting(session.access_token, session.user.id, keyName, value);
+      errorEl.hidden = true;
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+    }
+  }
+
+  lockInput.addEventListener("change", () =>
+    save("lock_chrome_by_default", lockInput.checked)
+  );
+  showAllInput.addEventListener("change", () => save("show_all_items", showAllInput.checked));
+
+  app.querySelectorAll("[data-theme]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const theme = button.dataset.theme;
+      applyTheme(theme);
+      save("theme", theme);
+    });
+  });
+
+  on("back-to-vault", () => showVault(session, key));
 }
 
 // Shared by the manual "Autofill" button and the auto-fill-on-open path, so
@@ -486,6 +562,8 @@ async function showVault(session, key) {
     await boot();
   });
   on("sign-out", handleSignOut);
+  on("settings", () => showSettings(session, key));
+  on("profile", () => chrome.tabs.create({ url: `${PADLOCK_CONFIG.WEBSITE_URL}/profile` }));
   on("add-entry", () => showEntryForm(session, key, null));
 
   const matchList = app.querySelector("#entry-list-match");
@@ -510,6 +588,12 @@ async function showVault(session, key) {
     session.access_token,
     session.user.id,
     "auto_fill_single_match",
+    false
+  );
+  const showAllItems = await fetchUserSetting(
+    session.access_token,
+    session.user.id,
+    "show_all_items",
     false
   );
 
@@ -549,6 +633,12 @@ async function showVault(session, key) {
     return;
   }
 
+  if (!activeHost && !showAllItems) {
+    matchEmpty.hidden = false;
+    matchEmpty.textContent = "Open a website to see matching entries.";
+    return;
+  }
+
   if (!activeHost) {
     matchLabel.hidden = true;
     matchEmpty.hidden = true;
@@ -567,7 +657,7 @@ async function showVault(session, key) {
   const rest = entries.filter((entry) => !matching.includes(entry));
 
   matchLabel.hidden = false;
-  allSection.hidden = false;
+  allSection.hidden = !showAllItems;
   matchLabel.textContent = `This site (${activeHost})`;
 
   if (matching.length === 0) {
@@ -629,8 +719,10 @@ async function showVault(session, key) {
   // explicit "off" and made the toggle look broken.
   allSection.open = expandByDefault;
 
-  for (const { site, activePassword } of rest) {
-    allList.appendChild(buildEntryNode(site, activePassword, session, key, refresh, hintOnlyMode));
+  if (showAllItems) {
+    for (const { site, activePassword } of rest) {
+      allList.appendChild(buildEntryNode(site, activePassword, session, key, refresh, hintOnlyMode));
+    }
   }
 }
 

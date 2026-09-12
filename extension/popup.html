@@ -63,9 +63,19 @@
       <div class="panel">
         <div class="vault-header">
           <h1>Your vault</h1>
-          <div>
-            <button class="btn btn-ghost btn-sm" data-action="lock">Lock</button>
-            <button class="btn btn-ghost btn-sm" data-action="sign-out">Sign out</button>
+          <div class="vault-actions">
+            <button class="entry-icon-btn" data-action="lock" title="Lock vault" aria-label="Lock vault">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            </button>
+            <button class="entry-icon-btn" data-action="settings" title="Settings" aria-label="Settings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="m19.4 15 .1.1a2 2 0 0 1-2.8 2.8l-.1-.1a2 2 0 0 0-3.4 1.4V19a2 2 0 0 1-4 0v-.1a2 2 0 0 0-3.4-1.4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A2 2 0 0 0 3.6 11H3.5a2 2 0 0 1 0-4h.1A2 2 0 0 0 5 3.6l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A2 2 0 0 0 11 2.2V2a2 2 0 0 1 4 0v.2a2 2 0 0 0 3.4 1.4l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A2 2 0 0 0 20.6 7h.1a2 2 0 0 1 0 4h-.1a2 2 0 0 0-1.2 4Z"/></svg>
+            </button>
+            <button class="entry-icon-btn" data-action="profile" title="Profile" aria-label="Profile">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+            </button>
+            <button class="entry-icon-btn" data-action="sign-out" title="Sign out" aria-label="Sign out">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M21 19V5a2 2 0 0 0-2-2h-6"/></svg>
+            </button>
           </div>
         </div>
         <button class="btn btn-secondary" data-action="add-entry">+ Add entry</button>
@@ -78,6 +88,40 @@
           <summary class="section-summary">All items</summary>
           <ul class="entry-list" id="entry-list-all"></ul>
         </details>
+      </div>
+    </template>
+
+    <template id="tpl-settings">
+      <div class="panel">
+        <div class="vault-header">
+          <h1>Settings</h1>
+          <button class="btn btn-ghost btn-sm" data-action="back-to-vault">Back</button>
+        </div>
+
+        <p class="section-label">Appearance</p>
+        <div class="setting-choice-row">
+          <button class="btn btn-secondary btn-sm" data-theme="light">Light</button>
+          <button class="btn btn-secondary btn-sm" data-theme="dark">Dark</button>
+          <button class="btn btn-secondary btn-sm" data-theme="system">System</button>
+        </div>
+
+        <label class="setting-toggle">
+          <input type="checkbox" id="setting-lock-chrome" />
+          <span>
+            <strong>Lock when Chrome starts</strong>
+            <small>When off, only the Lock button locks the extension.</small>
+          </span>
+        </label>
+
+        <label class="setting-toggle">
+          <input type="checkbox" id="setting-show-all-items" />
+          <span>
+            <strong>Show All items</strong>
+            <small>When off, show only entries matching the current website.</small>
+          </span>
+        </label>
+
+        <p class="error" id="settings-error" hidden></p>
       </div>
     </template>
 

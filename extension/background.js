@@ -393,7 +393,7 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete" && tab.active) rebuildMenuForTab(tab);
 });
 chrome.storage.onChanged.addListener((_changes, areaName) => {
-  if (areaName === "session") rebuildMenuForActiveTab();
+  if (areaName === "session" || areaName === "local") rebuildMenuForActiveTab();
 });
 
 chrome.runtime.onInstalled.addListener((details) => {
@@ -408,4 +408,19 @@ chrome.runtime.onInstalled.addListener((details) => {
     chrome.tabs.create({ url: `${PADLOCK_CONFIG.WEBSITE_URL}/` });
   }
 });
-chrome.runtime.onStartup.addListener(rebuildMenuForActiveTab);
+chrome.runtime.onStartup.addListener(async () => {
+  try {
+    const session = await getSession();
+    if (session) {
+      const lockOnStartup = await fetchUserSetting(
+        session.access_token,
+        session.user.id,
+        "lock_chrome_by_default",
+        false
+      );
+      if (lockOnStartup) await clearVaultKey();
+    }
+  } finally {
+    rebuildMenuForActiveTab();
+  }
+});

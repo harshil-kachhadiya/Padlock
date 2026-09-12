@@ -13,6 +13,8 @@ export type Settings = {
   never_show_passwords: boolean;
   hint_only_mode: boolean;
   auto_fill_single_match: boolean;
+  lock_chrome_by_default: boolean;
+  show_all_items: boolean;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -23,6 +25,8 @@ const DEFAULT_SETTINGS: Settings = {
   never_show_passwords: false,
   hint_only_mode: false,
   auto_fill_single_match: false,
+  lock_chrome_by_default: false,
+  show_all_items: false,
 };
 
 type SettingsContextValue = {

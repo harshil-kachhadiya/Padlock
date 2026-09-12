@@ -492,6 +492,42 @@ export default function SettingsPage() {
               />
               <span>
                 <span className="block text-sm font-medium text-foreground">
+
+            <label className="mt-4 flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={settings.show_all_items}
+                onChange={(e) => handleUpdateSetting("show_all_items", e.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Show all items in the extension
+                </span>
+                <span className="block text-xs text-foreground-muted">
+                  When off, the extension hides the full list and only shows entries for the
+                  current website.
+                </span>
+              </span>
+            </label>
+
+            <label className="mt-4 flex items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={settings.lock_chrome_by_default}
+                onChange={(e) => handleUpdateSetting("lock_chrome_by_default", e.target.checked)}
+              />
+              <span>
+                <span className="block text-sm font-medium text-foreground">
+                  Lock the extension when Chrome starts
+                </span>
+                <span className="block text-xs text-foreground-muted">
+                  Require the master password again after Chrome closes. When off, the extension
+                  stays unlocked until you click Lock.
+                </span>
+              </span>
+            </label>
                   Expand &ldquo;All items&rdquo; by default
                 </span>
                 <span className="block text-xs text-foreground-muted">
@@ -500,6 +536,7 @@ export default function SettingsPage() {
                 </span>
               </span>
             </label>
+
           </CardBody>
         </Card>
 

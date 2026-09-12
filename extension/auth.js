@@ -1,6 +1,6 @@
 // Supabase auth over plain fetch — no SDK bundling needed for a Manifest V3 extension.
 
-const PADLOCK_SESSION_KEY = "padlock_session"; // { access_token, refresh_token, expires_at, user }
+const PADLOCK_SESSION_KEY = "padlock_session"; // chrome.storage.local: { access_token, refresh_token, expires_at, user }
 const PADLOCK_VAULT_KEY = "padlock_vault_key"; // { rawKey: number[], unlockedAt: number }
 const PADLOCK_DRAFT_KEY = "padlock_draft"; // { formKey, siteName, siteUrl, username, password, savedAt }
 
@@ -35,7 +35,7 @@ async function signInWithGoogle() {
     user,
   };
 
-  await chrome.storage.session.set({ [PADLOCK_SESSION_KEY]: session });
+  await chrome.storage.local.set({ [PADLOCK_SESSION_KEY]: session });
   return session;
 }
 
@@ -61,24 +61,39 @@ async function refreshSession(session) {
     body: JSON.stringify({ refresh_token: session.refresh_token }),
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    await chrome.storage.local.remove(PADLOCK_SESSION_KEY);
+    return null;
+  }
 
   const data = await res.json();
+  if (!data.access_token) {
+    await chrome.storage.local.remove(PADLOCK_SESSION_KEY);
+    return null;
+  }
+
   const refreshed = {
     access_token: data.access_token,
-    refresh_token: data.refresh_token,
+    // Supabase rotates refresh tokens. Always persist the newly returned
+    // token, while retaining the old one only for providers that omit it.
+    refresh_token: data.refresh_token || session.refresh_token,
     expires_at: Date.now() + (data.expires_in ?? 3600) * 1000,
     user: session.user,
   };
 
-  await chrome.storage.session.set({ [PADLOCK_SESSION_KEY]: refreshed });
+  await chrome.storage.local.set({ [PADLOCK_SESSION_KEY]: refreshed });
   return refreshed;
 }
 
 async function getSession() {
-  const stored = await chrome.storage.session.get(PADLOCK_SESSION_KEY);
+  const stored = await chrome.storage.local.get(PADLOCK_SESSION_KEY);
   const session = stored[PADLOCK_SESSION_KEY];
   if (!session) return null;
+
+  if (!session.access_token || !session.refresh_token || !session.expires_at) {
+    await chrome.storage.local.remove(PADLOCK_SESSION_KEY);
+    return null;
+  }
 
   if (Date.now() > session.expires_at - 60_000) {
     return refreshSession(session);
@@ -88,31 +103,27 @@ async function getSession() {
 }
 
 async function signOut() {
-  await chrome.storage.session.remove([PADLOCK_SESSION_KEY, PADLOCK_VAULT_KEY]);
+  await chrome.storage.local.remove(PADLOCK_SESSION_KEY);
+  await chrome.storage.local.remove(PADLOCK_VAULT_KEY);
 }
 
 async function storeVaultKey(cryptoKey) {
   const rawKey = await exportKeyRaw(cryptoKey);
-  await chrome.storage.session.set({
+  await chrome.storage.local.set({
     [PADLOCK_VAULT_KEY]: { rawKey, unlockedAt: Date.now() },
   });
 }
 
 async function loadVaultKey() {
-  const stored = await chrome.storage.session.get(PADLOCK_VAULT_KEY);
+  const stored = await chrome.storage.local.get(PADLOCK_VAULT_KEY);
   const entry = stored[PADLOCK_VAULT_KEY];
   if (!entry) return null;
-
-  if (Date.now() - entry.unlockedAt > PADLOCK_CONFIG.AUTO_LOCK_MS) {
-    await chrome.storage.session.remove(PADLOCK_VAULT_KEY);
-    return null;
-  }
 
   return importKeyRaw(entry.rawKey);
 }
 
 async function clearVaultKey() {
-  await chrome.storage.session.remove(PADLOCK_VAULT_KEY);
+  await chrome.storage.local.remove(PADLOCK_VAULT_KEY);
 }
 
 // Draft recovery for the Add/Edit form — kept only in memory (chrome.storage.session),
