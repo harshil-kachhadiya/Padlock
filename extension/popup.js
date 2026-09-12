@@ -158,6 +158,8 @@ async function boot() {
 
 async function bootInner() {
   checkStaleClipboard();
+  const headerActions = document.querySelector(".header-actions");
+  if (headerActions) headerActions.hidden = true;
   renderLoading("Checking session…");
   const session = await getSession();
 
@@ -168,6 +170,8 @@ async function bootInner() {
   }
 
   applyTheme(await fetchUserSetting(session.access_token, session.user.id, "theme", "light"));
+  if (headerActions) headerActions.hidden = false;
+  bindHeaderActions(session);
 
   renderLoading("Loading your account…");
   const userRow = await fetchUserRow(session.access_token, session.user.id);
@@ -310,6 +314,25 @@ async function handleUnlock(session, userRow) {
 }
 
 let systemThemeQuery;
+
+function bindHeaderActions(session) {
+  document.querySelectorAll(".header [data-theme]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const theme = button.dataset.theme;
+      applyTheme(theme);
+      try {
+        await updateUserSetting(session.access_token, session.user.id, "theme", theme);
+      } catch (error) {
+        showToast(error.message, "error");
+      }
+    });
+  });
+
+  document.querySelector('.header [data-action="lock"]').addEventListener("click", async () => {
+    await clearVaultKey();
+    await boot();
+  });
+}
 
 function applyTheme(theme) {
   if (systemThemeQuery) {
@@ -573,22 +596,7 @@ async function showVault(session, key) {
   render("tpl-vault");
   on("lock", async () => {
     await clearVaultKey();
-    await clearBrowserUnlock();
     await boot();
-  });
-  on("sign-out", handleSignOut);
-  on("settings", () => showSettings(session, key));
-  on("profile", () => chrome.tabs.create({ url: `${PADLOCK_CONFIG.WEBSITE_URL}/profile` }));
-  app.querySelectorAll("[data-theme]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const theme = button.dataset.theme;
-      applyTheme(theme);
-      try {
-        await updateUserSetting(session.access_token, session.user.id, "theme", theme);
-      } catch (error) {
-        showToast(error.message, "error");
-      }
-    });
   });
   on("add-entry", () => showEntryForm(session, key, null));
 
