@@ -467,8 +467,16 @@ export default function SettingsPage() {
               />
               <span>
                 <span className="block text-sm font-medium text-foreground">
+                  Expand &ldquo;All items&rdquo; by default
+                </span>
+                <span className="block text-xs text-foreground-muted">
+                  Applies to the browser extension&apos;s popup — keeps the full entry list
+                  expanded instead of collapsed.
+                </span>
+              </span>
+            </label>
 
-            <label className="mt-4 flex items-start gap-3">
+            <label className="flex items-start gap-3">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -486,7 +494,7 @@ export default function SettingsPage() {
               </span>
             </label>
 
-            <label className="mt-4 flex items-start gap-3">
+            <label className="flex items-start gap-3">
               <input
                 type="checkbox"
                 className="mt-0.5"
@@ -503,15 +511,6 @@ export default function SettingsPage() {
                 </span>
               </span>
             </label>
-                  Expand &ldquo;All items&rdquo; by default
-                </span>
-                <span className="block text-xs text-foreground-muted">
-                  Applies to the browser extension&apos;s popup — keeps the full entry list
-                  expanded instead of collapsed.
-                </span>
-              </span>
-            </label>
-
           </CardBody>
         </Card>
 
@@ -546,7 +545,6 @@ export default function SettingsPage() {
               Permanently deletes your vault, notes, settings, and account record. This cannot be
               undone — export your vault first if you want a copy.
             </p>
-
             <label className="mb-1.5 block text-sm font-semibold text-foreground">
               Type DELETE to confirm
             </label>
@@ -556,9 +554,7 @@ export default function SettingsPage() {
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               className="mb-4 w-full max-w-xs rounded-sm border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-red-600 focus:ring-2 focus:ring-red-600/30"
             />
-
             {deleteError && <Alert variant="error">{deleteError}</Alert>}
-
             <Button
               variant="danger"
               disabled={deleteConfirmText !== "DELETE" || deleting}

@@ -160,7 +160,6 @@ async function boot() {
 async function bootInner() {
   checkStaleClipboard();
   checkForExtensionUpdate();
-  setLockStatus(false);
   const headerActions = document.querySelector(".header-actions");
   if (headerActions) headerActions.hidden = true;
   renderLoading("Checking session…");
@@ -204,8 +203,6 @@ async function bootInner() {
     }
   }
 
-  setLockStatus(Boolean(cachedKey));
-
   if (!cachedKey) {
     render("tpl-unlock");
     on("sign-out", handleSignOut);
@@ -244,13 +241,6 @@ async function checkForExtensionUpdate() {
     label: "Reload",
     onClick: () => chrome.runtime.reload(),
   }, 8000);
-}
-
-function setLockStatus(unlocked) {
-  const status = document.querySelector("#lock-status");
-  if (!status) return;
-  status.textContent = unlocked ? "Unlocked" : "Locked";
-  status.classList.toggle("unlocked", unlocked);
 }
 
 async function handleSignIn() {
