@@ -42,6 +42,11 @@ function findUsernameField(passwordField) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "PADLOCK_PING") {
+    sendResponse({ ok: true });
+    return true;
+  }
+
   if (message?.type === "PADLOCK_AUTOFILL") {
     const passwordField = findPasswordField();
     const usernameField = findUsernameField(passwordField);

@@ -124,6 +124,20 @@ async function getActiveTabUrl() {
   return tab?.url ?? "";
 }
 
+async function sendTabMessage(tab, message) {
+  try {
+    return await chrome.tabs.sendMessage(tab.id, message);
+  } catch (error) {
+    const messageText = error?.message || "";
+    if (!/Receiving end does not exist|Could not establish connection/.test(messageText)) {
+      throw error;
+    }
+
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] });
+    return chrome.tabs.sendMessage(tab.id, message);
+  }
+}
+
 async function boot() {
   try {
     await bootInner();
@@ -386,7 +400,7 @@ async function performAutofill(site, activePassword, key, hintOnlyMode) {
 
   if (useHint) {
     const hintText = await decryptEntry(key, activePassword.encrypted_hint);
-    const response = await chrome.tabs.sendMessage(tab.id, {
+    const response = await sendTabMessage(tab, {
       type: "PADLOCK_SHOW_HINT",
       username: site.username,
       hint: hintText,
@@ -395,7 +409,7 @@ async function performAutofill(site, activePassword, key, hintOnlyMode) {
   }
 
   const plaintext = await decryptEntry(key, activePassword.encrypted_password);
-  const response = await chrome.tabs.sendMessage(tab.id, {
+  const response = await sendTabMessage(tab, {
     type: "PADLOCK_AUTOFILL",
     username: site.username,
     password: plaintext,
@@ -565,6 +579,17 @@ async function showVault(session, key) {
   on("sign-out", handleSignOut);
   on("settings", () => showSettings(session, key));
   on("profile", () => chrome.tabs.create({ url: `${PADLOCK_CONFIG.WEBSITE_URL}/profile` }));
+  app.querySelectorAll("[data-theme]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const theme = button.dataset.theme;
+      applyTheme(theme);
+      try {
+        await updateUserSetting(session.access_token, session.user.id, "theme", theme);
+      } catch (error) {
+        showToast(error.message, "error");
+      }
+    });
+  });
   on("add-entry", () => showEntryForm(session, key, null));
 
   const matchList = app.querySelector("#entry-list-match");
@@ -842,7 +867,7 @@ async function showEntryForm(session, key, existing) {
 
     if (tab?.id) {
       try {
-        const captured = await chrome.tabs.sendMessage(tab.id, { type: "PADLOCK_CAPTURE" });
+        const captured = await sendTabMessage(tab, { type: "PADLOCK_CAPTURE" });
         if (captured?.username) usernameInput.value = captured.username;
         if (captured?.password) passwordInput.value = captured.password;
       } catch {

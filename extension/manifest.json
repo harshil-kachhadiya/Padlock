@@ -21,7 +21,7 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["storage", "identity", "contextMenus", "tabs"],
+  "permissions": ["storage", "identity", "contextMenus", "tabs", "scripting"],
   "host_permissions": [
     "<all_urls>",
     "https://zfaisbajepehsrnjkpwc.supabase.co/*"

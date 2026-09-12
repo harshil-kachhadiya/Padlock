@@ -269,6 +269,33 @@ body {
   margin: 8px 0 14px;
 }
 
+.theme-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--navy-800);
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.theme-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.theme-icon-btn:hover,
+.theme-icon-btn:focus-visible {
+  border-color: var(--navy-800);
+  background: color-mix(in srgb, var(--navy-800) 10%, var(--surface));
+  outline: none;
+}
+
 .setting-toggle {
   display: flex;
   align-items: flex-start;
@@ -300,6 +327,20 @@ body {
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+.vault-actions .entry-icon-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.vault-actions .entry-icon-btn:hover,
+.vault-actions .entry-icon-btn:focus-visible {
+  border-color: var(--border);
+  background: var(--surface);
+  outline: none;
 }
 
 .vault-header h1 {
