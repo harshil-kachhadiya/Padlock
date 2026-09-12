@@ -145,12 +145,13 @@ export function SiteHeader() {
         Skip to content
       </a>
 
-      <div className="bg-gray-800 px-4 py-1.5 text-center text-xs text-gray-100 sm:px-8">
-        An official-style zero-knowledge vault &mdash; your master password is never transmitted
-        or stored.
-      </div>
+      <div className="fixed inset-x-0 top-0 z-40">
+        <div className="bg-gray-800 px-4 py-1.5 text-center text-xs text-gray-100 sm:px-8">
+          An official-style zero-knowledge vault &mdash; your master password is never transmitted
+          or stored.
+        </div>
 
-      <header className="border-b-4 border-header-border bg-header-bg">
+        <header className="border-b-4 border-header-border bg-header-bg">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4 sm:px-8">
           <Link
             href="/"
@@ -416,7 +417,9 @@ export function SiteHeader() {
             </div>
           </nav>
         )}
-      </header>
+        </header>
+      </div>
+      <div className="h-[96px]" aria-hidden="true" />
     </>
   );
 }

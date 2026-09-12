@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { SUPPORT_EMAIL } from "@/lib/seo";
 import { Alert, Button, Card, CardBody, Input, SiteHeader, PageContainer } from "@/components/ui";
 
 export default function ForgotPasswordPage() {
@@ -130,6 +131,22 @@ export default function ForgotPasswordPage() {
             >
               Back to sign in
             </button>
+
+            <div className="mt-6 border-t border-border pt-4 text-center">
+              <p className="text-xs leading-relaxed text-foreground-muted">
+                Need help accessing your account? Contact us at{" "}
+                <a
+                  href={`mailto:${SUPPORT_EMAIL}?subject=Padlock%20password%20help`}
+                  className="font-semibold text-navy-700 hover:underline dark:text-gold-500"
+                >
+                  {SUPPORT_EMAIL}
+                </a>
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-foreground-muted">
+                Support cannot recover or bypass a forgotten vault master password because it is
+                never stored.
+              </p>
+            </div>
           </CardBody>
         </Card>
       </PageContainer>
