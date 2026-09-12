@@ -203,6 +203,63 @@ async function addIgnoredHost(host) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "PADLOCK_AUTO_FILL_ON_LOAD") {
+    (async () => {
+      try {
+        const tabId = sender.tab?.id;
+        const host = hostFromSender(sender);
+        if (tabId == null || !host) return sendResponse({ ok: false });
+
+        const session = await getSession();
+        const vaultKey = await loadVaultKey();
+        if (!session || !vaultKey) return sendResponse({ ok: false });
+
+        const enabled = await fetchUserSetting(
+          session.access_token,
+          session.user.id,
+          "auto_fill_single_match",
+          true
+        );
+        if (!enabled) return sendResponse({ ok: false });
+
+        const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
+        const matches = activeEntriesForHost(allSites, host);
+        if (matches.length !== 1) return sendResponse({ ok: false });
+
+        const { site, activePassword } = matches[0];
+        const hintOnlyMode = await fetchUserSetting(
+          session.access_token,
+          session.user.id,
+          "hint_only_mode",
+          false
+        );
+
+        if (hintOnlyMode && activePassword.encrypted_hint) {
+          const hint = await decryptEntry(vaultKey, activePassword.encrypted_hint);
+          await chrome.tabs.sendMessage(tabId, {
+            type: "PADLOCK_SHOW_HINT",
+            username: site.username,
+            hint,
+            autoFill: true,
+          });
+        } else {
+          const password = await decryptEntry(vaultKey, activePassword.encrypted_password);
+          await chrome.tabs.sendMessage(tabId, {
+            type: "PADLOCK_AUTOFILL",
+            username: site.username,
+            password,
+            autoFill: true,
+          });
+        }
+
+        sendResponse({ ok: true });
+      } catch {
+        sendResponse({ ok: false });
+      }
+    })();
+    return true;
+  }
+
   if (message?.type === "PADLOCK_CAPTURE_SUBMIT") {
     const tabId = sender.tab?.id;
     const host = hostFromSender(sender);
