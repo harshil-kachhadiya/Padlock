@@ -286,6 +286,7 @@ async function handleUnlock(session, userRow) {
 
     await recordUnlockSuccess(session.user.id);
     await storeVaultKey(key);
+    await markBrowserUnlocked();
     await showVault(session, key);
   } catch (err) {
     errorEl.textContent = err.message;
@@ -325,6 +326,9 @@ async function showSettings(session, key) {
   const errorEl = app.querySelector("#settings-error");
   const lockInput = app.querySelector("#setting-lock-chrome");
   const showAllInput = app.querySelector("#setting-show-all-items");
+  const browserModeInput = app.querySelector("#setting-browser-mode");
+  const browserPasswordInput = app.querySelector("#setting-browser-password");
+  const browserPasswordSave = app.querySelector('[data-action="save-browser-password"]');
   const values = {
     lock_chrome_by_default: await fetchUserSetting(
       session.access_token,
@@ -343,6 +347,9 @@ async function showSettings(session, key) {
 
   lockInput.checked = Boolean(values.lock_chrome_by_default);
   showAllInput.checked = Boolean(values.show_all_items);
+  const browserConfig = await getBrowserLockConfig();
+  browserModeInput.value = browserConfig?.mode || "separate";
+  browserPasswordInput.placeholder = browserConfig ? "Leave blank to keep current password" : "Browser password";
   applyTheme(values.theme);
 
   async function save(keyName, value) {
@@ -359,6 +366,24 @@ async function showSettings(session, key) {
     save("lock_chrome_by_default", lockInput.checked)
   );
   showAllInput.addEventListener("change", () => save("show_all_items", showAllInput.checked));
+  browserPasswordSave.addEventListener("click", async () => {
+    const password = browserPasswordInput.value;
+    if (browserModeInput.value === "separate" && !password && !browserConfig) {
+      errorEl.textContent = "Enter a browser password first.";
+      errorEl.hidden = false;
+      return;
+    }
+    if (browserModeInput.value === "separate" && !password) return;
+    try {
+      await configureBrowserLock(password, browserModeInput.value);
+      browserPasswordInput.value = "";
+      errorEl.hidden = true;
+      showToast("Browser lock password saved", "success");
+    } catch (err) {
+      errorEl.textContent = err.message;
+      errorEl.hidden = false;
+    }
+  });
 
   app.querySelectorAll("[data-theme]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -559,6 +584,7 @@ async function showVault(session, key) {
   render("tpl-vault");
   on("lock", async () => {
     await clearVaultKey();
+    await clearBrowserUnlock();
     await boot();
   });
   on("sign-out", handleSignOut);

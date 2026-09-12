@@ -1,4 +1,55 @@
-// Runs in every page. Fills login forms on request from the popup — never runs on its own.
+// Runs in normal web pages. It fills login forms on request and can show the
+// extension's website lock overlay when the user enables browser lock.
+
+async function checkBrowserLock() {
+  try {
+    const status = await chrome.runtime.sendMessage({ type: "PADLOCK_BROWSER_LOCK_STATUS" });
+    if (status?.locked) showBrowserLock();
+  } catch {
+    // The service worker may be unavailable during extension startup.
+  }
+}
+
+function showBrowserLock() {
+  if (document.getElementById("padlock-browser-lock")) return;
+
+  const host = document.createElement("div");
+  host.id = "padlock-browser-lock";
+  host.style.cssText = "all:initial;position:fixed;inset:0;z-index:2147483647;display:block;";
+  document.documentElement.appendChild(host);
+  const shadow = host.attachShadow({ mode: "closed" });
+  shadow.innerHTML = `
+    <style>
+      :host { all: initial; }
+      .scrim { position: fixed; inset: 0; display: grid; place-items: center; background: #0f2d52; font-family: -apple-system, Segoe UI, sans-serif; }
+      .panel { width: min(360px, calc(100vw - 32px)); padding: 24px; border-radius: 8px; background: #fff; color: #1c1c1c; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+      h1 { margin: 0 0 8px; font-size: 20px; } p { color: #4d5661; font-size: 13px; } input, button { width: 100%; box-sizing: border-box; padding: 10px; margin-top: 10px; font: inherit; } button { cursor: pointer; color: #fff; background: #14396a; border: 0; border-radius: 4px; font-weight: 600; } .error { color: #b91c1c; }
+    </style>
+    <div class="scrim"><form class="panel"><h1>Browser locked</h1><p>Enter your browser password to continue.</p><input type="password" autofocus autocomplete="current-password" placeholder="Browser password"/><button type="submit">Unlock browser</button><p class="error" hidden></p></form></div>`;
+
+  const form = shadow.querySelector("form");
+  const input = shadow.querySelector("input");
+  const button = shadow.querySelector("button");
+  const error = shadow.querySelector(".error");
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    button.disabled = true;
+    const result = await chrome.runtime.sendMessage({
+      type: "PADLOCK_BROWSER_UNLOCK",
+      password: input.value,
+    });
+    if (result?.ok) {
+      host.remove();
+      return;
+    }
+    error.textContent = "Incorrect browser password.";
+    error.hidden = false;
+    input.select();
+    button.disabled = false;
+  });
+}
+
+checkBrowserLock();
 
 function setNativeValue(el, value) {
   const proto = Object.getPrototypeOf(el);

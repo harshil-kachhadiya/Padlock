@@ -3,6 +3,8 @@
 const PADLOCK_SESSION_KEY = "padlock_session"; // chrome.storage.local: { access_token, refresh_token, expires_at, user }
 const PADLOCK_VAULT_KEY = "padlock_vault_key"; // { rawKey: number[], unlockedAt: number }
 const PADLOCK_DRAFT_KEY = "padlock_draft"; // { formKey, siteName, siteUrl, username, password, savedAt }
+const PADLOCK_BROWSER_LOCK_KEY = "padlock_browser_lock";
+const PADLOCK_BROWSER_UNLOCKED_KEY = "padlock_browser_unlocked";
 
 async function signInWithGoogle() {
   const redirectUrl = chrome.identity.getRedirectURL();
@@ -103,8 +105,12 @@ async function getSession() {
 }
 
 async function signOut() {
-  await chrome.storage.local.remove(PADLOCK_SESSION_KEY);
-  await chrome.storage.local.remove(PADLOCK_VAULT_KEY);
+  await chrome.storage.local.remove([
+    PADLOCK_SESSION_KEY,
+    PADLOCK_VAULT_KEY,
+    PADLOCK_BROWSER_LOCK_KEY,
+  ]);
+  await clearBrowserUnlock();
 }
 
 async function storeVaultKey(cryptoKey) {
@@ -124,6 +130,56 @@ async function loadVaultKey() {
 
 async function clearVaultKey() {
   await chrome.storage.local.remove(PADLOCK_VAULT_KEY);
+}
+
+async function getBrowserLockConfig() {
+  const stored = await chrome.storage.local.get(PADLOCK_BROWSER_LOCK_KEY);
+  return stored[PADLOCK_BROWSER_LOCK_KEY] || null;
+}
+
+async function configureBrowserLock(password, mode, iterations = LEGACY_PBKDF2_ITERATIONS) {
+  if (mode === "master") {
+    await chrome.storage.local.set({ [PADLOCK_BROWSER_LOCK_KEY]: { mode } });
+    await markBrowserUnlocked();
+    return;
+  }
+
+  const salt = generateSalt();
+  const key = await deriveKey(password, salt, iterations);
+  const verifier = await createVerifier(key);
+  await chrome.storage.local.set({
+    [PADLOCK_BROWSER_LOCK_KEY]: { mode, salt, iterations, verifier },
+  });
+  await markBrowserUnlocked();
+}
+
+async function markBrowserUnlocked() {
+  await chrome.storage.session.set({ [PADLOCK_BROWSER_UNLOCKED_KEY]: true });
+}
+
+async function clearBrowserUnlock() {
+  await chrome.storage.session.remove(PADLOCK_BROWSER_UNLOCKED_KEY);
+}
+
+async function isBrowserUnlocked() {
+  const stored = await chrome.storage.session.get(PADLOCK_BROWSER_UNLOCKED_KEY);
+  return stored[PADLOCK_BROWSER_UNLOCKED_KEY] === true;
+}
+
+async function verifyBrowserPassword(password) {
+  const config = await getBrowserLockConfig();
+  if (!config) return false;
+  if (config.mode === "master") {
+    const session = await getSession();
+    if (!session) return false;
+    const userRow = await fetchUserRow(session.access_token, session.user.id);
+    if (!userRow) return false;
+    const key = await deriveKey(password, userRow.salt, userRow.pbkdf2_iterations ?? 250_000);
+    return checkVerifier(key, userRow.verifier);
+  }
+  if (!config.salt || !config.verifier) return false;
+  const key = await deriveKey(password, config.salt, config.iterations);
+  return checkVerifier(key, config.verifier);
 }
 
 // Draft recovery for the Add/Edit form — kept only in memory (chrome.storage.session),
