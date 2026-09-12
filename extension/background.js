@@ -4,6 +4,8 @@
 importScripts("config.js", "domainMatch.js", "crypto.js", "auth.js", "supabaseRest.js");
 
 const MENU_ROOT_ID = "padlock-root";
+const AUTO_FILL_IGNORED_HOSTS_KEY = "padlock_auto_fill_ignored_hosts";
+const UPDATE_AVAILABLE_KEY = "padlock_update_available";
 
 // chrome.contextMenus.create() takes an optional callback specifically so you
 // can drain chrome.runtime.lastError — without reading it, a failed create
@@ -11,6 +13,27 @@ const MENU_ROOT_ID = "padlock-root";
 // extension's error log instead of being handled.
 function safeCreateMenu(props) {
   chrome.contextMenus.create(props, () => void chrome.runtime.lastError);
+}
+
+function isSafeAutofillUrl(url) {
+  try {
+    return new URL(url).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+async function getAutoFillIgnoredHosts() {
+  const stored = await chrome.storage.local.get(AUTO_FILL_IGNORED_HOSTS_KEY);
+  return stored[AUTO_FILL_IGNORED_HOSTS_KEY] || [];
+}
+
+async function setAutoFillIgnored(host, ignored) {
+  const hosts = await getAutoFillIgnoredHosts();
+  const next = ignored
+    ? [...new Set([...hosts, host])]
+    : hosts.filter((savedHost) => !exactHostsMatch(savedHost, host));
+  await chrome.storage.local.set({ [AUTO_FILL_IGNORED_HOSTS_KEY]: next });
 }
 
 function activeEntriesForHost(allSites, activeHost) {
@@ -203,6 +226,101 @@ async function addIgnoredHost(host) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type === "PADLOCK_GET_AUTO_FILL_STATUS") {
+    (async () => {
+      const host = hostFromSender(sender) || message.host;
+      const ignoredHosts = await getAutoFillIgnoredHosts();
+      sendResponse({
+        host,
+        ignored: Boolean(host && ignoredHosts.some((savedHost) => exactHostsMatch(savedHost, host))),
+      });
+    })();
+    return true;
+  }
+
+  if (message?.type === "PADLOCK_SET_AUTO_FILL_STATUS") {
+    (async () => {
+      const host = hostFromSender(sender) || message.host;
+      if (host) await setAutoFillIgnored(host, message.disabled === true);
+      sendResponse({ ok: Boolean(host) });
+    })();
+    return true;
+  }
+
+  if (message?.type === "PADLOCK_AUTO_FILL_ON_LOAD") {
+    (async () => {
+      try {
+        const tabId = sender.tab?.id;
+        const tabUrl = sender.tab?.url || "";
+        const host = hostFromSender(sender);
+        if (tabId == null || !host || !isSafeAutofillUrl(tabUrl)) {
+          return sendResponse({ ok: false });
+        }
+
+        const ignoredHosts = await getAutoFillIgnoredHosts();
+        if (ignoredHosts.some((savedHost) => exactHostsMatch(savedHost, host))) {
+          return sendResponse({ ok: false });
+        }
+
+        const session = await getSession();
+        const vaultKey = await loadVaultKey();
+        if (!session || !vaultKey) return sendResponse({ ok: false });
+
+        const enabled = await fetchUserSetting(
+          session.access_token,
+          session.user.id,
+          "auto_fill_single_match",
+          true
+        );
+        if (!enabled) return sendResponse({ ok: false });
+
+        const allSites = await fetchSitesWithPasswords(session.access_token, session.user.id);
+        const matches = allSites
+          .map((site) => {
+            const activePassword = (site.passwords || [])
+              .filter((password) => !password.deleted)
+              .sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0];
+            return activePassword ? { site, activePassword } : null;
+          })
+          .filter(Boolean)
+          .filter(({ site }) => exactHostsMatch(host, hostnameOf(`https://${site.site_url}`)));
+
+        if (matches.length !== 1) return sendResponse({ ok: false });
+
+        const { site, activePassword } = matches[0];
+        const hintOnlyMode = await fetchUserSetting(
+          session.access_token,
+          session.user.id,
+          "hint_only_mode",
+          false
+        );
+
+        if (hintOnlyMode && activePassword.encrypted_hint) {
+          const hint = await decryptEntry(vaultKey, activePassword.encrypted_hint);
+          await chrome.tabs.sendMessage(tabId, {
+            type: "PADLOCK_SHOW_HINT",
+            username: site.username,
+            hint,
+            autoFill: true,
+          });
+        } else {
+          const password = await decryptEntry(vaultKey, activePassword.encrypted_password);
+          await chrome.tabs.sendMessage(tabId, {
+            type: "PADLOCK_AUTOFILL",
+            username: site.username,
+            password,
+            autoFill: true,
+          });
+        }
+
+        sendResponse({ ok: true });
+      } catch {
+        sendResponse({ ok: false });
+      }
+    })();
+    return true;
+  }
+
   if (message?.type === "PADLOCK_CAPTURE_SUBMIT") {
     const tabId = sender.tab?.id;
     const host = hostFromSender(sender);
@@ -407,6 +525,9 @@ chrome.runtime.onInstalled.addListener((details) => {
     // page (sign in → set up) rather than /welcome, which assumes it does.
     chrome.tabs.create({ url: `${PADLOCK_CONFIG.WEBSITE_URL}/` });
   }
+});
+chrome.runtime.onUpdateAvailable.addListener((details) => {
+  chrome.storage.local.set({ [UPDATE_AVAILABLE_KEY]: details.version });
 });
 chrome.runtime.onStartup.addListener(async () => {
   try {

@@ -32,3 +32,8 @@ function hostsMatch(a, b) {
   if (!a || !b) return false;
   return registrableDomain(a) === registrableDomain(b);
 }
+
+function exactHostsMatch(a, b) {
+  if (!a || !b) return false;
+  return a.replace(/^www\./, "") === b.replace(/^www\./, "");
+}

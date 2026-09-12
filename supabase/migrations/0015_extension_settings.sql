@@ -27,3 +27,7 @@ where key = 'lock_chrome_by_default';
 update public.setting_items
 set default_value = '"system"'
 where key = 'theme';
+
+update public.setting_items
+set default_value = 'true'
+where key = 'auto_fill_single_match';

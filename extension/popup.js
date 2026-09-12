@@ -5,6 +5,7 @@ const app = document.getElementById("app");
 // doesn't re-trigger a fill the user didn't just ask for. Popups are
 // non-persistent in MV3 — this resets naturally every time the popup opens.
 const autoFilledSiteIds = new Set();
+const UPDATE_AVAILABLE_KEY = "padlock_update_available";
 
 function render(templateId) {
   const template = document.getElementById(templateId);
@@ -158,6 +159,8 @@ async function boot() {
 
 async function bootInner() {
   checkStaleClipboard();
+  checkForExtensionUpdate();
+  setLockStatus(false);
   const headerActions = document.querySelector(".header-actions");
   if (headerActions) headerActions.hidden = true;
   renderLoading("Checking session…");
@@ -201,6 +204,8 @@ async function bootInner() {
     }
   }
 
+  setLockStatus(Boolean(cachedKey));
+
   if (!cachedKey) {
     render("tpl-unlock");
     on("sign-out", handleSignOut);
@@ -229,6 +234,23 @@ async function bootInner() {
   }
 
   await showVault(session, cachedKey);
+}
+
+async function checkForExtensionUpdate() {
+  const stored = await chrome.storage.local.get(UPDATE_AVAILABLE_KEY);
+  const version = stored[UPDATE_AVAILABLE_KEY];
+  if (!version || version === chrome.runtime.getManifest().version) return;
+  showToast(`Padlock update ${version} is available`, "info", {
+    label: "Reload",
+    onClick: () => chrome.runtime.reload(),
+  }, 8000);
+}
+
+function setLockStatus(unlocked) {
+  const status = document.querySelector("#lock-status");
+  if (!status) return;
+  status.textContent = unlocked ? "Unlocked" : "Locked";
+  status.classList.toggle("unlocked", unlocked);
 }
 
 async function handleSignIn() {
@@ -625,6 +647,7 @@ async function showVault(session, key) {
   const matchEmpty = app.querySelector("#match-empty");
   const matchLabel = app.querySelector("#match-label");
   const allSection = app.querySelector("#all-section");
+  const autoFillToggle = app.querySelector('[data-action="toggle-auto-fill"]');
 
   matchLabel.hidden = true;
   matchEmpty.hidden = true;
@@ -632,6 +655,29 @@ async function showVault(session, key) {
 
   const activeUrl = await getActiveTabUrl();
   const activeHost = hostnameOf(activeUrl);
+  if (activeHost && /^https:/.test(activeUrl)) {
+    const autoFillStatus = await chrome.runtime.sendMessage({
+      type: "PADLOCK_GET_AUTO_FILL_STATUS",
+      host: activeHost,
+    });
+    autoFillToggle.hidden = false;
+    autoFillToggle.textContent = autoFillStatus?.ignored
+      ? "Enable automatic autofill for this site"
+      : "Disable automatic autofill for this site";
+    autoFillToggle.addEventListener("click", async () => {
+      const disabled = !autoFillStatus?.ignored;
+      await chrome.runtime.sendMessage({
+        type: "PADLOCK_SET_AUTO_FILL_STATUS",
+        host: activeHost,
+        disabled,
+      });
+      autoFillStatus.ignored = disabled;
+      autoFillToggle.textContent = disabled
+        ? "Enable automatic autofill for this site"
+        : "Disable automatic autofill for this site";
+      showToast(disabled ? "Automatic autofill disabled for this site" : "Automatic autofill enabled", "success");
+    });
+  }
   const hintOnlyMode = await fetchUserSetting(
     session.access_token,
     session.user.id,

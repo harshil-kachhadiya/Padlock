@@ -88,6 +88,19 @@ body[data-theme="dark"] .theme-toggle .theme-icon-moon {
   outline: none;
 }
 
+.lock-status {
+  margin-left: -3px;
+  color: var(--gold-500);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.lock-status.unlocked {
+  color: #86efac;
+}
+
 .header-menu-wrap {
   position: relative;
 }

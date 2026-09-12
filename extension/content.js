@@ -53,12 +53,12 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     let filled = 0;
 
-    if (usernameField && message.username) {
+    if (usernameField && message.username && (!message.autoFill || !usernameField.value)) {
       setNativeValue(usernameField, message.username);
       filled++;
     }
 
-    if (passwordField && message.password) {
+    if (passwordField && message.password && (!message.autoFill || !passwordField.value)) {
       setNativeValue(passwordField, message.password);
       filled++;
     }
@@ -80,7 +80,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const usernameField = findUsernameField(passwordField);
 
     let filledUsername = false;
-    if (usernameField && message.username) {
+    if (usernameField && message.username && (!message.autoFill || !usernameField.value)) {
       setNativeValue(usernameField, message.username);
       filledUsername = true;
     }
@@ -105,6 +105,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 });
+
+setTimeout(() => {
+  chrome.runtime.sendMessage({ type: "PADLOCK_AUTO_FILL_ON_LOAD" }).catch(() => {});
+}, 250);
 
 // --- Save-prompt on form submit -------------------------------------------
 

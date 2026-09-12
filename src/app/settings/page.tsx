@@ -91,6 +91,11 @@ export default function SettingsPage() {
     router.replace("/login");
   }
 
+  async function handleSignOutOtherDevices() {
+    await supabase.auth.signOut({ scope: "others" });
+    setSuccess("Other sessions have been signed out. This device remains active.");
+  }
+
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -518,10 +523,13 @@ export default function SettingsPage() {
           </CardHeader>
           <CardBody>
             <p className="mb-4 text-xs leading-relaxed text-foreground-muted">
-              Signed in somewhere you don&apos;t recognize? This signs out every device and
-              browser using your account, not just this one.
+              This device is currently active. Supabase does not expose individual device names
+              in the client, but you can sign out all other sessions without signing out here.
             </p>
-            <Button variant="danger" onClick={handleSignOutEverywhere}>
+            <Button variant="secondary" onClick={handleSignOutOtherDevices}>
+              Sign out other devices
+            </Button>
+            <Button variant="danger" onClick={handleSignOutEverywhere} className="ml-2">
               Sign out of all devices
             </Button>
           </CardBody>
