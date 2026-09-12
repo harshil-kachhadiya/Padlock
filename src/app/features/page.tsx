@@ -29,7 +29,7 @@ const GROUPS: FeatureGroup[] = [
     items: [
       {
         name: "Zero-knowledge encryption",
-        body: "AES-256-GCM with a key derived via PBKDF2 (250,000 iterations). Your master password never leaves your browser.",
+        body: "AES-256-GCM with a key derived via PBKDF2-SHA-256. New vaults use 600,000 iterations, while each vault keeps its stored iteration count. Your master password never leaves your browser.",
       },
       {
         name: "Google Sign-In",
@@ -46,6 +46,10 @@ const GROUPS: FeatureGroup[] = [
       {
         name: "Auto-lock",
         body: "The decryption key is cleared from memory after a configurable idle period, on logout, or when the tab closes.",
+      },
+      {
+        name: "Session controls",
+        body: "Sign out other active sessions while keeping the current device signed in, or sign out everywhere when you need a complete reset.",
       },
       {
         name: "Escalating unlock lockout",
@@ -95,11 +99,11 @@ const GROUPS: FeatureGroup[] = [
       },
       {
         name: "Settings",
-        body: "Theme (light/dark), auto-lock interval, and dashboard display preferences — synced through your account, not just one browser.",
+        body: "Auto-lock interval, dashboard display preferences, extension autofill behavior, and security controls — synced through your account.",
       },
       {
         name: "Light / dark theme",
-        body: "Applies instantly and persists across devices once you're signed in.",
+        body: "Switch themes instantly from the header with one toggle; the system theme is the default and follows your device preference.",
       },
     ],
   },
@@ -109,6 +113,22 @@ const GROUPS: FeatureGroup[] = [
       {
         name: "Autofill",
         body: "Fill a login form from the popup with one click, matched to the site you're on by registrable domain.",
+      },
+      {
+        name: "Automatic single-login autofill",
+        body: "When exactly one credential matches the current HTTPS hostname, Padlock fills empty login fields automatically as the page loads — no popup click required.",
+      },
+      {
+        name: "Autofill safety controls",
+        body: "Automatic autofill is limited to HTTPS pages and exact hostnames, never overwrites fields you already filled, and can be disabled for any individual site.",
+      },
+      {
+        name: "Lock status indicator",
+        body: "The extension header clearly shows whether your vault is locked or unlocked before any credential action is available.",
+      },
+      {
+        name: "Update notifications",
+        body: "The extension notifies you when a new version is available so you can reload and use the latest security and compatibility fixes.",
       },
       {
         name: "Right-click \"Fill with Padlock\"",
