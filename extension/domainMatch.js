@@ -35,5 +35,5 @@ function hostsMatch(a, b) {
 
 function exactHostsMatch(a, b) {
   if (!a || !b) return false;
-  return a.replace(/^www\./, "") === b.replace(/^www\./, "");
+  return a.replace(/^www\./, "").toLowerCase() === b.replace(/^www\./, "").toLowerCase();
 }
