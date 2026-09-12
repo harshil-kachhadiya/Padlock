@@ -1,6 +1,7 @@
 "use client";
 
 import { supabase } from "@/lib/supabaseClient";
+import Link from "next/link";
 import { Button, Card, CardBody, SiteHeader, PageContainer } from "@/components/ui";
 
 export default function LoginPage() {
@@ -27,6 +28,15 @@ export default function LoginPage() {
             <Button onClick={handleGoogleSignIn} className="mt-6 w-full">
               Sign in with Google
             </Button>
+            <Link
+              href="/forgot-password"
+              className="mt-4 block text-xs font-semibold text-navy-700 hover:underline dark:text-gold-500"
+            >
+              Forgot account password?
+            </Link>
+            <p className="mt-4 text-xs leading-relaxed text-foreground-muted">
+              Your Padlock vault master password cannot be reset because it is never stored.
+            </p>
           </CardBody>
         </Card>
       </PageContainer>

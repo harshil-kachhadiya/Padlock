@@ -203,28 +203,6 @@ async function addIgnoredHost(host) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type === "PADLOCK_BROWSER_LOCK_STATUS") {
-    (async () => {
-      const session = await getSession();
-      const config = await getBrowserLockConfig();
-      const unlocked = await isBrowserUnlocked();
-      const enabled = session
-        ? await fetchUserSetting(session.access_token, session.user.id, "lock_chrome_by_default", false)
-        : false;
-      sendResponse({ locked: Boolean(enabled && config && !unlocked) });
-    })();
-    return true;
-  }
-
-  if (message?.type === "PADLOCK_BROWSER_UNLOCK") {
-    (async () => {
-      const valid = await verifyBrowserPassword(message.password || "");
-      if (valid) await markBrowserUnlocked();
-      sendResponse({ ok: valid });
-    })();
-    return true;
-  }
-
   if (message?.type === "PADLOCK_CAPTURE_SUBMIT") {
     const tabId = sender.tab?.id;
     const host = hostFromSender(sender);
@@ -431,7 +409,6 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 chrome.runtime.onStartup.addListener(async () => {
-  await clearBrowserUnlock();
   try {
     const session = await getSession();
     if (session) {

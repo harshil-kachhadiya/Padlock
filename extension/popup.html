@@ -108,23 +108,10 @@
         <label class="setting-toggle">
           <input type="checkbox" id="setting-lock-chrome" />
           <span>
-            <strong>Lock websites when Chrome starts</strong>
-              <small>Requires a browser password before using normal websites. Chrome internal pages cannot be controlled by an extension.</small>
+            <strong>Lock Padlock when Chrome starts</strong>
+              <small>Requires your Padlock master password before using the vault again. Chrome itself is not locked.</small>
           </span>
         </label>
-
-          <label class="setting-toggle">
-            <span>
-              <strong>Browser lock password</strong>
-              <small>Use a separate password from your Padlock master password.</small>
-              <select id="setting-browser-mode" class="input">
-                <option value="separate">Separate browser password</option>
-                <option value="master">Use Padlock master password</option>
-              </select>
-              <input type="password" id="setting-browser-password" class="input" placeholder="Browser password" autocomplete="new-password" />
-              <button class="btn btn-secondary btn-sm" data-action="save-browser-password">Save browser password</button>
-            </span>
-          </label>
 
         <label class="setting-toggle">
           <input type="checkbox" id="setting-show-all-items" />

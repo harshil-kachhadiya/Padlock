@@ -4,8 +4,8 @@
 insert into public.setting_items (key, label, description, data_type, default_value) values
   (
     'lock_chrome_by_default',
-    'Lock extension when Chrome starts',
-    'Require the master password again after Chrome is closed and reopened. When off, the extension stays unlocked until you click Lock.',
+    'Lock Padlock when Chrome starts',
+    'Require the Padlock master password again after Chrome is closed and reopened. Chrome itself is not locked.',
     'boolean',
     'false'
   ),
@@ -17,3 +17,9 @@ insert into public.setting_items (key, label, description, data_type, default_va
     'false'
   )
 on conflict (key) do nothing;
+
+update public.setting_items
+set
+  label = 'Lock Padlock when Chrome starts',
+  description = 'Require the Padlock master password again after Chrome is closed and reopened. Chrome itself is not locked.'
+where key = 'lock_chrome_by_default';
